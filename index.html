@@ -1,0 +1,3231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A withered tree meets spring</title>
+  <style>
+    :root {
+      --ink: #f7f1e8;
+      --muted: rgba(247, 241, 232, 0.62);
+      --glass: rgba(8, 9, 10, 0.58);
+      --line: rgba(247, 241, 232, 0.16);
+      --accent: #d7fff1;
+    }
+
+    .left-nav,
+    .chapter-hud,
+    .memory-journal,
+    .hint,
+    .view-nav {
+      display: none !important;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 170vh;
+      margin: 0;
+      background: #000;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body {
+      cursor: default;
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #000;
+      z-index: 0;
+    }
+
+    #seasonCanvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+      mix-blend-mode: screen;
+      opacity: 0.72;
+    }
+
+    .shade {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(185, 255, 229, 0.12), transparent 32%),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.62), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.5));
+      z-index: 1;
+    }
+
+    .season-switcher {
+      position: fixed;
+      left: 24px;
+      bottom: 24px;
+      z-index: 6;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border: 1px solid rgba(247, 241, 232, 0.12);
+      border-radius: 999px;
+      background: rgba(5, 7, 10, 0.38);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 14px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    .season-switcher button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: transparent;
+      color: rgba(247, 241, 232, 0.54);
+      font: inherit;
+      font-size: 0.64rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 180ms ease, background 180ms ease;
+    }
+
+    .season-switcher button:hover,
+    .season-switcher button.active {
+      color: rgba(247, 241, 232, 0.92);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .left-nav {
+      position: fixed;
+      left: clamp(18px, 3vw, 46px);
+      top: 50%;
+      z-index: 4;
+      display: flex;
+      gap: clamp(22px, 4vh, 38px);
+      align-items: center;
+      transform: translateY(-50%);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .left-nav a {
+      color: rgba(247, 241, 232, 0.68);
+      text-decoration: none;
+      transition: color 220ms ease, transform 220ms ease;
+    }
+
+    .left-nav a:hover {
+      color: var(--ink);
+      transform: translateX(3px);
+    }
+
+    .hero {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      transition: opacity 900ms ease, transform 900ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .hero.hidden {
+      opacity: 0;
+      transform: translateY(-7vh);
+    }
+
+    .hero-inner {
+      width: min(96vw, 1180px);
+      text-align: center;
+      padding: 0 24px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Cormorant Garamond, Georgia, "Times New Roman", serif;
+      font-size: clamp(1.8rem, 3.6vw, 3.6rem);
+      font-weight: 400;
+      line-height: 1.05;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      text-shadow: 0 0 32px rgba(215, 255, 241, 0.16);
+    }
+
+    .subtitle {
+      max-width: 560px;
+      margin: 22px auto 32px;
+      color: var(--muted);
+      font-size: clamp(0.92rem, 1.5vw, 1.05rem);
+      line-height: 1.7;
+    }
+
+    .journey {
+      pointer-events: auto;
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 13px 22px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--ink);
+      font: inherit;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      cursor: pointer;
+      backdrop-filter: blur(18px);
+      transition: background 220ms ease, border-color 220ms ease, transform 220ms ease;
+    }
+
+    .journey:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(247, 241, 232, 0.38);
+      transform: translateY(-2px);
+    }
+
+    .hint {
+      position: fixed;
+      right: clamp(18px, 3vw, 48px);
+      bottom: clamp(18px, 4vw, 42px);
+      z-index: 3;
+      max-width: 250px;
+      color: rgba(247, 241, 232, 0.46);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      text-align: right;
+      pointer-events: none;
+    }
+
+    .epoch-slider-container {
+      position: fixed;
+      right: clamp(18px, 3vw, 48px);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      opacity: 0.7;
+      transition: opacity 300ms ease;
+    }
+
+    .epoch-slider-container:hover {
+      opacity: 1;
+    }
+
+    .epoch-label {
+      writing-mode: vertical-rl;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.6rem;
+      color: var(--muted);
+    }
+
+    .epoch-slider {
+      appearance: none;
+      width: 160px;
+      height: 2px;
+      background: var(--line);
+      outline: none;
+      transform: rotate(-90deg);
+      margin: 80px 0;
+      cursor: pointer;
+    }
+
+    .epoch-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--ink);
+      box-shadow: 0 0 10px rgba(215, 255, 241, 0.4);
+      cursor: grab;
+      transition: transform 150ms ease;
+    }
+
+    .epoch-slider::-webkit-slider-thumb:active {
+      cursor: grabbing;
+      transform: scale(1.4);
+    }
+
+    .epoch-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--ink);
+      box-shadow: 0 0 10px rgba(215, 255, 241, 0.4);
+      cursor: grab;
+    }
+
+    .info-card {
+      position: fixed;
+      right: clamp(18px, 5vw, 76px);
+      top: 50%;
+      z-index: 5;
+      width: min(380px, calc(100vw - 36px));
+      padding: 30px 30px 28px;
+      border: 1px solid rgba(247, 241, 232, 0.18);
+      border-radius: 8px;
+      background: var(--glass);
+      backdrop-filter: blur(22px);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-42%) translateX(26px);
+      transition: opacity 340ms ease, transform 340ms ease;
+    }
+
+    .info-card.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    .info-card h2 {
+      margin: 0 36px 14px 0;
+      font-family: Cormorant Garamond, Georgia, "Times New Roman", serif;
+      font-size: 2.45rem;
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: rgba(247, 241, 232, 0.74);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    .chapter-hud {
+      position: fixed;
+      left: 50%;
+      top: clamp(16px, 3vh, 28px);
+      z-index: 4;
+      width: min(540px, calc(100vw - 120px));
+      padding: 14px 20px 15px;
+      border: 1px solid rgba(247, 241, 232, 0.14);
+      border-radius: 8px;
+      background: rgba(8, 9, 10, 0.36);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+      text-align: center;
+      transform: translateX(-50%);
+      pointer-events: none;
+    }
+
+    .chapter-kicker {
+      display: block;
+      margin-bottom: 6px;
+      color: rgba(215, 255, 241, 0.58);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .chapter-title {
+      display: block;
+      color: rgba(247, 241, 232, 0.94);
+      font-family: Cormorant Garamond, Georgia, "Times New Roman", serif;
+      font-size: clamp(1.35rem, 2.6vw, 2rem);
+      line-height: 1;
+    }
+
+    .chapter-hint {
+      margin: 8px 0 0;
+      color: rgba(247, 241, 232, 0.58);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .memory-journal {
+      position: fixed;
+      left: clamp(18px, 3vw, 46px);
+      bottom: clamp(20px, 4vw, 42px);
+      z-index: 4;
+      width: min(300px, calc(100vw - 36px));
+      max-height: min(42vh, 360px);
+      padding: 16px 18px 18px;
+      border: 1px solid rgba(247, 241, 232, 0.14);
+      border-radius: 8px;
+      background: rgba(8, 9, 10, 0.34);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 58px rgba(0, 0, 0, 0.34);
+      opacity: 0.5;
+      overflow: hidden;
+      transition: opacity 260ms ease, transform 260ms ease, background 260ms ease;
+    }
+
+    .memory-journal:hover,
+    .memory-journal.has-discoveries {
+      opacity: 0.9;
+      background: rgba(8, 9, 10, 0.52);
+    }
+
+    .memory-journal h2 {
+      margin: 0;
+      color: rgba(247, 241, 232, 0.86);
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .journal-progress {
+      margin-top: 6px;
+      color: rgba(215, 255, 241, 0.56);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .journal-list {
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+      max-height: 270px;
+      margin: 14px 0 0;
+      padding: 0;
+      overflow: auto;
+      list-style: none;
+      scrollbar-width: thin;
+    }
+
+    .journal-entry {
+      padding-top: 10px;
+      border-top: 1px solid rgba(247, 241, 232, 0.1);
+      opacity: 0;
+      transform: translateY(8px);
+      animation: journalEntryIn 520ms ease forwards;
+    }
+
+    .journal-entry strong {
+      display: block;
+      color: rgba(247, 241, 232, 0.92);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.92rem;
+      font-weight: 400;
+    }
+
+    .journal-entry span {
+      display: block;
+      margin: 4px 0;
+      color: rgba(215, 255, 241, 0.58);
+      font-size: 0.58rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .journal-entry p {
+      margin: 0;
+      color: rgba(247, 241, 232, 0.58);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.76rem;
+      line-height: 1.45;
+    }
+
+    @keyframes journalEntryIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .view-nav {
+      position: fixed;
+      left: 50%;
+      bottom: clamp(18px, 3vw, 34px);
+      z-index: 5;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px;
+      border: 1px solid rgba(247, 241, 232, 0.14);
+      border-radius: 999px;
+      background: rgba(8, 9, 10, 0.38);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      transform: translateX(-50%);
+    }
+
+    .view-nav button {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: transparent;
+      color: rgba(247, 241, 232, 0.62);
+      font: inherit;
+      font-size: 0.66rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 180ms ease, color 180ms ease;
+    }
+
+    .view-nav button:hover,
+    .view-nav button:focus-visible {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(247, 241, 232, 0.94);
+      outline: none;
+    }
+
+    .close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: 1px solid rgba(247, 241, 232, 0.22);
+      border-radius: 50%;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      transition: background 200ms ease, transform 200ms ease;
+    }
+
+    .close:hover {
+      background: rgba(255, 255, 255, 0.09);
+      transform: rotate(90deg);
+    }
+
+    .scroll-space {
+      min-height: 170vh;
+      pointer-events: none;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        min-height: 150vh;
+      }
+
+      .left-nav {
+        left: 16px;
+        gap: 18px;
+        font-size: 0.64rem;
+      }
+
+      .hero-inner {
+        width: 100vw;
+        padding: 0 14px;
+      }
+
+      h1 {
+        font-size: clamp(1.28rem, 7.1vw, 2rem);
+      }
+
+      .subtitle {
+        margin-top: 18px;
+      }
+
+      .hint {
+        left: 56px;
+        right: 18px;
+        bottom: 86px;
+        text-align: left;
+      }
+
+      .chapter-hud {
+        width: min(420px, calc(100vw - 96px));
+        padding: 12px 14px;
+      }
+
+      .chapter-hint {
+        display: none;
+      }
+
+      .memory-journal {
+        left: 18px;
+        bottom: 132px;
+        width: min(260px, calc(100vw - 96px));
+        max-height: 30vh;
+        padding: 13px 14px 14px;
+      }
+
+      .journal-list {
+        max-height: 150px;
+      }
+
+      .view-nav {
+        bottom: 18px;
+        max-width: calc(100vw - 24px);
+        overflow-x: auto;
+      }
+
+      .view-nav button {
+        padding: 8px 10px;
+        font-size: 0.6rem;
+      }
+
+      .season-switcher {
+        left: 16px;
+        bottom: 16px;
+      }
+
+      .season-switcher button {
+        padding: 7px 8px;
+        font-size: 0.58rem;
+      }
+
+      .epoch-slider-container {
+        right: 12px;
+        transform: translateY(-50%) scale(0.85);
+      }
+
+      .info-card {
+        left: 18px;
+        right: 18px;
+        top: auto;
+        bottom: 18px;
+        width: auto;
+        transform: translateY(18px);
+      }
+
+      .info-card.visible {
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="shade"></div>
+  <canvas id="seasonCanvas" aria-hidden="true"></canvas>
+
+  <nav class="left-nav" aria-label="Exhibition sections">
+    <a href="#birds">Before</a>
+    <a href="#fungi">Silence</a>
+    <a href="#species">Afterlight</a>
+  </nav>
+
+  <section class="chapter-hud" id="chapterHud" aria-live="polite">
+    <span class="chapter-kicker">A Quiet Farewell</span>
+    <span class="chapter-title" id="chapterTitle">Where It Began</span>
+    <p class="chapter-hint" id="chapterHint">Every ending keeps the shape of a beginning.</p>
+  </section>
+
+  <main class="hero" id="hero">
+    <div class="hero-inner">
+      <h1>A withered tree meets spring</h1>
+      <p class="subtitle">秋天，在为盛春铺垫。</p>
+      <button class="journey" id="startButton" type="button">Begin</button>
+    </div>
+  </main>
+
+  <aside class="info-card" id="infoCard" aria-live="polite">
+    <button class="close" id="closeCard" type="button" aria-label="Close">X</button>
+    <h2 id="cardTitle">cure</h2>
+    <p id="cardText">枯木犹有逢春日</p>
+  </aside>
+
+  <aside class="memory-journal" id="memoryJournal" aria-live="polite">
+    <h2>Fragments Kept</h2>
+    <div class="journal-progress" id="journalProgress">Remembered 0 / 5</div>
+    <ul class="journal-list" id="journalList"></ul>
+  </aside>
+
+  <p class="hint">Drag to wander. Scroll gently. Touch the brighter lights to uncover what time could not erase.</p>
+  <div class="epoch-slider-container" id="epochControl">
+    <span class="epoch-label">Season</span>
+    <input type="range" id="epochSlider" class="epoch-slider" min="0" max="3" step="0.01" value="2.18" aria-label="Season">
+  </div>
+  <nav class="view-nav" id="viewNav" aria-label="View navigation">
+    <button type="button" data-view="roots">Roots</button>
+    <button type="button" data-view="trunk">Heartwood</button>
+    <button type="button" data-view="canopy">Afterlight</button>
+    <button type="button" data-view="whole">Whole</button>
+  </nav>
+  <div class="season-switcher" id="seasonSwitcher" aria-label="Season particle background">
+    <button type="button" data-season-bg="spring">Spring</button>
+    <button type="button" data-season-bg="summer">Summer</button>
+    <button type="button" data-season-bg="autumn">Autumn</button>
+    <button type="button" data-season-bg="winter">Winter</button>
+  </div>
+  <div class="scroll-space"></div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+  import * as THREE from "three";
+  import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+  // --- DOM Elements ---
+  const canvas = document.getElementById("scene");
+  const seasonCanvas = document.getElementById("seasonCanvas");
+  const seasonSwitcher = document.getElementById("seasonSwitcher");
+  const hero = document.getElementById("hero");
+  const startButton = document.getElementById("startButton");
+  const infoCard = document.getElementById("infoCard");
+  const closeCard = document.getElementById("closeCard");
+  const cardTitle = document.getElementById("cardTitle");
+  const cardText = document.getElementById("cardText");
+  const epochSlider = document.getElementById("epochSlider");
+  const epochControl = document.getElementById("epochControl");
+  const chapterTitle = document.getElementById("chapterTitle");
+  const chapterHint = document.getElementById("chapterHint");
+  const memoryJournal = document.getElementById("memoryJournal");
+  const journalProgress = document.getElementById("journalProgress");
+  const journalList = document.getElementById("journalList");
+  const viewNav = document.getElementById("viewNav");
+  const DEFAULT_SEASON = "autumn";
+  const DEFAULT_EPOCH_VALUE = "2.18";
+  if (epochSlider) {
+    epochSlider.value = DEFAULT_EPOCH_VALUE;
+  }
+
+  // --- 2D Seasonal Background Layer ---
+  const seasonConfigs = {
+    spring: {
+      baseCount: 128,
+      colors: ["#ffd6e8", "#fff4fb", "#dccbff", "#d7fff4", "#f8b7d8"],
+      sizeRange: [5, 26],
+      speedRange: [0.12, 0.58],
+      wind: { x: 0.18, y: -0.035 },
+      gravity: -0.004,
+      rotationRange: [-0.018, 0.018],
+      swayRange: [28, 92],
+      spriteTypes: ["petal", "petal", "petal", "glowingSpore", "glowingSpore", "pollen", "bokehSoft"],
+      opacity: 0.64,
+      fadeIn: 0.025,
+      fadeOut: 0.018,
+      spiralStrength: 0.42,
+      liftStrength: 0.32,
+      turbulence: 0.16,
+      motionType: "springLift",
+      rotationMode: "flipDrift"
+    },
+    summer: {
+      baseCount: 156,
+      colors: ["#fff5a8", "#d9ff9e", "#b5ffcc", "#ffe58f", "#dfffd0"],
+      sizeRange: [3, 34],
+      speedRange: [0.04, 0.28],
+      wind: { x: 0.008, y: 0 },
+      gravity: 0,
+      rotationRange: [-0.006, 0.006],
+      swayRange: [4, 22],
+      spriteTypes: ["microDust", "microDust", "microDust", "microDust", "firefly", "firefly", "bokehFirefly"],
+      opacity: 0.76,
+      fadeIn: 0.022,
+      fadeOut: 0.02,
+      wanderRadius: 180,
+      wanderForce: 0.018,
+      wanderDamping: 0.955,
+      turbulence: 0.018,
+      motionType: "wander",
+      rotationMode: "softPulse"
+    },
+    autumn: {
+      baseCount: 132,
+      colors: ["#ff9a3d", "#ffc857", "#b6572d", "#7b3f24"],
+      sizeRange: [9, 34],
+      speedRange: [0.42, 1.36],
+      wind: { x: 0.46, y: 0.08 },
+      gravity: 0.038,
+      rotationRange: [-0.086, 0.086],
+      swayRange: [34, 110],
+      spriteTypes: ["maple", "maple", "ginkgo", "leaf"],
+      opacity: 0.68,
+      fadeIn: 0.024,
+      fadeOut: 0.02,
+      gustChance: 0.008,
+      gustStrength: 3.1,
+      gustDrag: 0.95,
+      turbulence: 0.34,
+      motionType: "gustFall",
+      rotationMode: "tumble"
+    },
+    winter: {
+      baseCount: 210,
+      colors: ["#ffffff", "#dff1ff", "#b7d7ff", "#f7fbff"],
+      sizeRange: [2, 22],
+      speedRange: [0.1, 0.82],
+      wind: { x: 0.055, y: 0 },
+      gravity: 0.009,
+      rotationRange: [-0.008, 0.008],
+      swayRange: [4, 24],
+      spriteTypes: ["snowPoint", "snowPoint", "snowPoint", "snowMist", "iceCrystal", "snowflake"],
+      opacity: 0.72,
+      fadeIn: 0.018,
+      fadeOut: 0.015,
+      turbulence: 0.045,
+      motionType: "quietSnow",
+      rotationMode: "crystalDrift"
+    }
+  };
+
+  function makeSprite(size, drawFn) {
+    const spriteCanvas = document.createElement("canvas");
+    spriteCanvas.width = size;
+    spriteCanvas.height = size;
+    const ctx = spriteCanvas.getContext("2d");
+    drawFn(ctx, size);
+    return spriteCanvas;
+  }
+
+  function createSeasonSprites() {
+    const makeGlow = (size, stops) => makeSprite(size, (ctx, spriteSize) => {
+      const g = ctx.createRadialGradient(spriteSize / 2, spriteSize / 2, 0, spriteSize / 2, spriteSize / 2, spriteSize * 0.5);
+      stops.forEach(([offset, color]) => g.addColorStop(offset, color));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(spriteSize / 2, spriteSize / 2, spriteSize * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    return {
+      petal: makeSprite(64, (ctx, size) => {
+        const g = ctx.createRadialGradient(size * 0.45, size * 0.38, 2, size * 0.5, size * 0.5, size * 0.48);
+        g.addColorStop(0, "rgba(255,255,255,0.95)");
+        g.addColorStop(0.45, "rgba(255,190,220,0.72)");
+        g.addColorStop(1, "rgba(255,160,205,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(size * 0.5, size * 0.08);
+        ctx.bezierCurveTo(size * 0.86, size * 0.2, size * 0.82, size * 0.68, size * 0.5, size * 0.92);
+        ctx.bezierCurveTo(size * 0.18, size * 0.68, size * 0.14, size * 0.2, size * 0.5, size * 0.08);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }),
+      glowingSpore: makeGlow(58, [
+        [0, "rgba(250,255,236,0.95)"],
+        [0.14, "rgba(212,255,234,0.58)"],
+        [0.48, "rgba(180,218,255,0.16)"],
+        [1, "rgba(180,218,255,0)"]
+      ]),
+      bokehSoft: makeGlow(128, [
+        [0, "rgba(255,252,244,0.2)"],
+        [0.18, "rgba(255,204,232,0.14)"],
+        [0.52, "rgba(198,230,255,0.07)"],
+        [1, "rgba(198,230,255,0)"]
+      ]),
+      pollen: makeSprite(32, (ctx, size) => {
+        const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.48);
+        g.addColorStop(0, "rgba(255,244,224,0.86)");
+        g.addColorStop(0.5, "rgba(255,210,235,0.3)");
+        g.addColorStop(1, "rgba(255,210,235,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size * 0.48, 0, Math.PI * 2);
+        ctx.fill();
+      }),
+      firefly: makeSprite(72, (ctx, size) => {
+        const g = ctx.createRadialGradient(size / 2, size / 2, 1, size / 2, size / 2, size * 0.5);
+        g.addColorStop(0, "rgba(255,255,210,0.95)");
+        g.addColorStop(0.18, "rgba(226,255,143,0.62)");
+        g.addColorStop(0.62, "rgba(146,255,154,0.16)");
+        g.addColorStop(1, "rgba(146,255,154,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }),
+      bokehFirefly: makeGlow(138, [
+        [0, "rgba(255,255,204,0.32)"],
+        [0.12, "rgba(220,255,152,0.22)"],
+        [0.45, "rgba(142,255,178,0.08)"],
+        [1, "rgba(142,255,178,0)"]
+      ]),
+      microDust: makeGlow(18, [
+        [0, "rgba(232,255,192,0.5)"],
+        [0.36, "rgba(185,255,176,0.12)"],
+        [1, "rgba(185,255,176,0)"]
+      ]),
+      maple: makeSprite(72, (ctx, size) => {
+        const cx = size / 2;
+        const cy = size * 0.5;
+        const points = [
+          [0, -0.44], [0.1, -0.2], [0.31, -0.35], [0.24, -0.1],
+          [0.48, -0.08], [0.27, 0.08], [0.38, 0.32], [0.1, 0.2],
+          [0, 0.48], [-0.1, 0.2], [-0.38, 0.32], [-0.27, 0.08],
+          [-0.48, -0.08], [-0.24, -0.1], [-0.31, -0.35], [-0.1, -0.2]
+        ];
+        const g = ctx.createLinearGradient(size * 0.18, size * 0.1, size * 0.78, size * 0.86);
+        g.addColorStop(0, "rgba(255,204,92,0.9)");
+        g.addColorStop(0.58, "rgba(228,91,45,0.78)");
+        g.addColorStop(1, "rgba(92,42,24,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        points.forEach(([x, y], idx) => {
+          const px = cx + x * size;
+          const py = cy + y * size;
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,220,132,0.24)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }),
+      ginkgo: makeSprite(72, (ctx, size) => {
+        const cx = size / 2;
+        const cy = size * 0.58;
+        const g = ctx.createLinearGradient(size * 0.24, size * 0.12, size * 0.74, size * 0.9);
+        g.addColorStop(0, "rgba(255,224,106,0.92)");
+        g.addColorStop(0.62, "rgba(221,137,48,0.76)");
+        g.addColorStop(1, "rgba(136,72,36,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.bezierCurveTo(size * 0.14, size * 0.42, size * 0.12, size * 0.12, size * 0.43, size * 0.12);
+        ctx.quadraticCurveTo(size * 0.5, size * 0.2, size * 0.57, size * 0.12);
+        ctx.bezierCurveTo(size * 0.88, size * 0.12, size * 0.86, size * 0.42, cx, cy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,232,148,0.28)";
+        ctx.lineWidth = 1.1;
+        for (let i = -3; i <= 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + i * size * 0.065, size * 0.18 + Math.abs(i) * size * 0.025);
+          ctx.stroke();
+        }
+      }),
+      leaf: makeSprite(64, (ctx, size) => {
+        const g = ctx.createRadialGradient(size * 0.44, size * 0.36, 2, size * 0.5, size * 0.5, size * 0.54);
+        g.addColorStop(0, "rgba(255,196,82,0.9)");
+        g.addColorStop(0.62, "rgba(188,80,37,0.7)");
+        g.addColorStop(1, "rgba(108,54,28,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(size * 0.5, size * 0.5, size * 0.18, size * 0.43, -0.68, 0, Math.PI * 2);
+        ctx.fill();
+      }),
+      iceCrystal: makeSprite(72, (ctx, size) => {
+        const cx = size / 2;
+        const cy = size / 2;
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.48);
+        g.addColorStop(0, "rgba(255,255,255,0.86)");
+        g.addColorStop(0.34, "rgba(207,233,255,0.32)");
+        g.addColorStop(1, "rgba(207,233,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, size * 0.48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(235,248,255,0.86)";
+        ctx.lineWidth = 1.25;
+        ctx.lineCap = "round";
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI * 2 * i) / 6;
+          const x = cx + Math.cos(a) * size * 0.4;
+          const y = cy + Math.sin(a) * size * 0.4;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+          const bx = cx + Math.cos(a) * size * 0.22;
+          const by = cy + Math.sin(a) * size * 0.22;
+          const branchA = a + 0.62;
+          const branchB = a - 0.62;
+          ctx.beginPath();
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + Math.cos(branchA) * size * 0.08, by + Math.sin(branchA) * size * 0.08);
+          ctx.moveTo(bx, by);
+          ctx.lineTo(bx + Math.cos(branchB) * size * 0.08, by + Math.sin(branchB) * size * 0.08);
+          ctx.stroke();
+        }
+      }),
+      snowflake: makeSprite(56, (ctx, size) => {
+        ctx.strokeStyle = "rgba(238,248,255,0.82)";
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = "round";
+        const cx = size / 2;
+        const cy = size / 2;
+        for (let i = 0; i < 6; i++) {
+          const a = (Math.PI * 2 * i) / 6;
+          const x = cx + Math.cos(a) * size * 0.36;
+          const y = cy + Math.sin(a) * size * 0.36;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+        const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.45);
+        g.addColorStop(0, "rgba(255,255,255,0.35)");
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, size * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+      }),
+      snowPoint: makeSprite(24, (ctx, size) => {
+        const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size * 0.5);
+        g.addColorStop(0, "rgba(255,255,255,0.86)");
+        g.addColorStop(1, "rgba(210,232,255,0)");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+      }),
+      snowMist: makeGlow(96, [
+        [0, "rgba(255,255,255,0.18)"],
+        [0.24, "rgba(223,241,255,0.11)"],
+        [0.72, "rgba(184,212,232,0.05)"],
+        [1, "rgba(184,212,232,0)"]
+      ])
+    };
+  }
+
+  class Particle {
+    constructor(system, seasonName, fadingIn = true) {
+      this.system = system;
+      this.reset(seasonName, fadingIn, true);
+    }
+
+    reset(seasonName, fadingIn = true, randomY = false) {
+      const config = seasonConfigs[seasonName];
+      const spriteTypes = config.spriteTypes;
+      this.seasonName = seasonName;
+      this.config = config;
+      this.type = spriteTypes[Math.floor(Math.random() * spriteTypes.length)];
+      this.sprite = this.system.sprites[this.type];
+      this.depth = 0.18 + Math.random() * 0.92;
+      if (this.type === "bokehSoft" || this.type === "bokehFirefly") {
+        this.depth = 0.86 + Math.random() * 0.34;
+      }
+      if (this.type === "microDust") {
+        this.depth = 0.08 + Math.random() * 0.48;
+      }
+      if (this.type === "snowPoint") {
+        this.depth = 0.08 + Math.random() * 0.58;
+      }
+      if (this.type === "iceCrystal" || this.type === "snowMist") {
+        this.depth = 0.58 + Math.random() * 0.52;
+      }
+      this.size = this.system.rand(config.sizeRange[0], config.sizeRange[1]) * (0.55 + this.depth * 0.9);
+      if (this.type === "glowingSpore") this.size *= 1.25;
+      if (this.type === "bokehSoft" || this.type === "bokehFirefly") this.size *= this.system.rand(2.4, 4.8);
+      if (this.type === "microDust") this.size *= this.system.rand(0.35, 0.75);
+      if (this.type === "snowMist") this.size *= this.system.rand(2.2, 4.2);
+      if (this.type === "iceCrystal") this.size *= this.system.rand(0.85, 1.45);
+      this.speed = this.system.rand(config.speedRange[0], config.speedRange[1]) * (0.5 + this.depth);
+      this.x = Math.random() * this.system.width;
+      this.y = randomY ? Math.random() * this.system.height : -this.size - Math.random() * 80;
+      if (seasonName === "summer") {
+        this.y = Math.random() * this.system.height;
+      } else if (seasonName === "spring" && (this.type === "glowingSpore" || this.type === "bokehSoft")) {
+        this.y = randomY ? Math.random() * this.system.height : this.system.height + this.size + Math.random() * 140;
+      } else if (seasonName === "autumn" && !randomY) {
+        this.x = this.system.rand(-this.system.width * 0.08, this.system.width * 0.92);
+        this.y = -this.size - Math.random() * this.system.height * 0.35;
+      } else if (seasonName === "winter" && !randomY) {
+        this.y = -this.size - Math.random() * this.system.height * 0.5;
+      }
+      this.vx = (Math.random() - 0.5) * 0.35;
+      this.vy = this.speed;
+      this.rotation = Math.random() * Math.PI * 2;
+      this.rotationSpeed = this.system.rand(config.rotationRange[0], config.rotationRange[1]);
+      this.flipPhase = Math.random() * Math.PI * 2;
+      this.flipSpeed = this.system.rand(0.018, 0.052);
+      if (seasonName === "autumn") this.flipSpeed = this.system.rand(0.065, 0.15);
+      if (seasonName === "winter") this.flipSpeed = this.system.rand(0.006, 0.018);
+      this.swayPhase = Math.random() * Math.PI * 2;
+      this.swaySpeed = 0.006 + Math.random() * 0.018;
+      this.swayAmp = this.system.rand(config.swayRange[0], config.swayRange[1]) * (0.35 + this.depth);
+      this.opacity = fadingIn ? 0 : this.system.rand(0.32, 1);
+      this.baseOpacity = this.system.rand(0.28, 0.88) * config.opacity;
+      if (this.type === "bokehSoft" || this.type === "bokehFirefly") this.baseOpacity *= 0.42;
+      if (this.type === "microDust") this.baseOpacity *= 0.18;
+      if (this.type === "glowingSpore") this.baseOpacity *= 0.72;
+      this.retiring = false;
+      this.dead = false;
+      this.noiseSeed = Math.random() * 1000;
+      this.color = config.colors[Math.floor(Math.random() * config.colors.length)];
+      this.homeX = this.x;
+      this.homeY = this.y;
+      this.targetX = this.x;
+      this.targetY = this.y;
+      this.flickerState = "idle";
+      this.flickerTimer = 0;
+      this.flickerDuration = 1;
+      this.flickerFloor = this.baseOpacity * this.system.rand(0.12, 0.34);
+      this.flickerPeak = this.baseOpacity * this.system.rand(0.9, 1.55);
+      this.flickerValue = this.type === "microDust" ? this.flickerFloor : this.baseOpacity;
+      if (seasonName === "summer") {
+        this.pickSummerTarget();
+        this.pickFlickerState(true);
+      }
+    }
+
+    retire() {
+      this.retiring = true;
+    }
+
+    pickSummerTarget() {
+      const radius = this.config.wanderRadius * (0.35 + this.depth);
+      this.targetX = this.x + this.system.rand(-radius, radius);
+      this.targetY = this.y + this.system.rand(-radius * 0.55, radius * 0.55);
+      this.targetX = Math.max(40, Math.min(this.system.width - 40, this.targetX));
+      this.targetY = Math.max(40, Math.min(this.system.height - 40, this.targetY));
+    }
+
+    pickFlickerState(initial = false) {
+      if (this.type === "microDust") {
+        this.flickerState = "idle";
+        this.flickerDuration = this.system.rand(5.5, 12);
+        this.flickerTimer = initial ? Math.random() * this.flickerDuration : 0;
+        return;
+      }
+      if (this.flickerState === "idle") {
+        this.flickerState = "fadeIn";
+        this.flickerDuration = this.system.rand(0.55, 1.8);
+      } else if (this.flickerState === "fadeIn") {
+        this.flickerState = "sustain";
+        this.flickerDuration = this.system.rand(0.28, 1.25);
+      } else if (this.flickerState === "sustain") {
+        this.flickerState = "fadeOut";
+        this.flickerDuration = this.system.rand(0.65, 2.2);
+      } else {
+        this.flickerState = "idle";
+        this.flickerDuration = this.system.rand(1.8, 6.5);
+        this.flickerFloor = this.baseOpacity * this.system.rand(0.08, 0.28);
+        this.flickerPeak = this.baseOpacity * this.system.rand(0.9, 1.65);
+      }
+      this.flickerTimer = initial ? Math.random() * this.flickerDuration : 0;
+    }
+
+    updateSummerFlicker(dt) {
+      this.flickerTimer += dt;
+      if (this.flickerTimer >= this.flickerDuration) {
+        this.pickFlickerState();
+      }
+      const t = Math.max(0, Math.min(1, this.flickerTimer / this.flickerDuration));
+      const eased = t * t * (3 - 2 * t);
+      if (this.type === "microDust") {
+        this.flickerValue = this.flickerFloor * (0.72 + Math.sin(this.flickerTimer * 0.7 + this.noiseSeed) * 0.18);
+      } else if (this.flickerState === "fadeIn") {
+        this.flickerValue = this.flickerFloor + (this.flickerPeak - this.flickerFloor) * eased;
+      } else if (this.flickerState === "sustain") {
+        this.flickerValue = this.flickerPeak * (0.86 + Math.sin(this.flickerTimer * 7.0 + this.noiseSeed) * 0.08);
+      } else if (this.flickerState === "fadeOut") {
+        this.flickerValue = this.flickerPeak + (this.flickerFloor - this.flickerPeak) * eased;
+      } else {
+        this.flickerValue = this.flickerFloor;
+      }
+    }
+
+    update(dt, time, gust) {
+      const config = this.config;
+      if (this.retiring) {
+        this.opacity -= config.fadeOut * dt * 60;
+        if (this.opacity <= 0.01) this.dead = true;
+      } else {
+        this.opacity += (this.baseOpacity - this.opacity) * config.fadeIn * dt * 60;
+      }
+
+      this.swayPhase += this.swaySpeed * dt * 60;
+      this.rotation += this.rotationSpeed * dt * 60;
+      this.flipPhase += this.flipSpeed * dt * 60;
+
+      if (this.seasonName === "summer") {
+        this.updateSummerFlicker(dt);
+        if (this.type === "microDust") {
+          this.x += Math.sin(time * 0.14 + this.noiseSeed) * 0.015 * dt * 60;
+          this.y += Math.cos(time * 0.11 + this.noiseSeed) * 0.012 * dt * 60;
+          this.opacity = Math.min(this.opacity, this.flickerValue);
+          return;
+        }
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        const distance = Math.hypot(dx, dy) || 1;
+        if (distance < 24 + this.depth * 18) this.pickSummerTarget();
+        const force = config.wanderForce * (0.65 + this.depth);
+        this.vx = this.vx * config.wanderDamping + (dx / distance) * force + Math.sin(time * 1.3 + this.noiseSeed) * 0.006;
+        this.vy = this.vy * config.wanderDamping + (dy / distance) * force + Math.cos(time * 1.1 + this.noiseSeed) * 0.006;
+        this.x += (this.vx + config.wind.x * this.depth) * dt * 60;
+        this.y += this.vy * dt * 60;
+        this.opacity = Math.max(this.opacity * 0.94, this.flickerValue);
+        this.wrap();
+        return;
+      }
+
+      const sway = Math.sin(this.swayPhase) * this.swayAmp * 0.012;
+      const windX = (config.wind.x + gust) * (0.32 + this.depth);
+
+      if (this.seasonName === "spring") {
+        const spiralA = Math.sin(time * 0.58 + this.noiseSeed) * config.spiralStrength * (0.3 + this.depth);
+        const spiralB = Math.cos(time * 0.37 + this.noiseSeed * 0.7) * config.spiralStrength * 0.62;
+        const lift = config.liftStrength * Math.sin(time * 0.42 + this.swayPhase) * (this.type === "petal" ? 0.45 : 0.9);
+        const shimmer = Math.sin(time * 1.7 + this.noiseSeed * 0.2) * config.turbulence;
+        this.x += (this.vx + windX * 0.55 + sway + spiralA + spiralB + shimmer) * dt * 60;
+        this.y += (this.vy * (this.type === "petal" ? 0.25 : -0.16) + config.gravity * 34 * this.depth + config.wind.y - lift) * dt * 60;
+        if (this.type === "glowingSpore" || this.type === "bokehSoft") {
+          this.y -= (0.18 + this.depth * 0.22) * dt * 60;
+          this.x += Math.cos(time * 0.22 + this.noiseSeed) * 0.22 * dt * 60;
+        }
+      } else if (this.seasonName === "autumn") {
+        const tumble = Math.sin(this.flipPhase * 1.6 + this.noiseSeed) * config.turbulence;
+        const gustCurl = gust * Math.sin(time * 2.2 + this.noiseSeed) * (0.55 + this.depth);
+        this.vx = this.vx * config.gustDrag + gustCurl * 0.035;
+        this.x += (this.vx + windX + sway * 0.82 + tumble) * dt * 60;
+        this.y += (this.vy + config.gravity * 38 * this.depth + config.wind.y + Math.abs(tumble) * 0.08) * dt * 60;
+        this.rotation += Math.sin(time * 1.5 + this.noiseSeed) * 0.035 * dt * 60;
+      } else if (this.seasonName === "winter") {
+        const steadyWind = config.wind.x * (0.45 + this.depth * 0.75);
+        const quietSway = Math.sin(time * 0.34 + this.noiseSeed) * config.turbulence * (0.5 + this.depth);
+        this.x += (steadyWind + quietSway + sway * 0.08) * dt * 60;
+        this.y += (this.speed * 0.72 + config.gravity * 30 * this.depth) * dt * 60;
+        this.rotation += Math.sin(time * 0.18 + this.noiseSeed) * 0.004 * dt * 60;
+      } else {
+        this.x += (this.vx + windX + sway) * dt * 60;
+        this.y += (this.vy + config.gravity * 34 * this.depth + config.wind.y) * dt * 60;
+      }
+
+      if (this.x > this.system.width + 160 || this.y > this.system.height + 160 || this.x < -180 || this.y < -180) {
+        if (this.retiring) this.dead = true;
+        else this.reset(this.seasonName, true, false);
+      }
+    }
+
+    wrap() {
+      const margin = 80;
+      if (this.x < -margin) this.x = this.system.width + margin;
+      if (this.x > this.system.width + margin) this.x = -margin;
+      if (this.y < -margin) this.y = this.system.height + margin;
+      if (this.y > this.system.height + margin) this.y = -margin;
+    }
+
+    draw(ctx, mouse) {
+      if (this.opacity <= 0 || !this.sprite) return;
+      const parallaxX = -mouse.x * (6 + this.depth * 18);
+      const parallaxY = -mouse.y * (3 + this.depth * 10);
+      const drawSize = this.size * (this.type === "snowPoint" ? 0.75 : 1);
+      const isNearBokeh = this.type === "bokehSoft" || this.type === "bokehFirefly" || this.type === "snowMist";
+      const isFlippingShape = this.type === "petal" || this.type === "maple" || this.type === "ginkgo" || this.type === "leaf";
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, this.opacity));
+      ctx.translate(this.x + parallaxX, this.y + parallaxY);
+      ctx.rotate(this.rotation);
+      if (isFlippingShape) {
+        const flip = Math.cos(this.flipPhase);
+        const minScale = this.type === "petal" ? 0.12 : 0.18;
+        ctx.scale(Math.max(minScale, Math.abs(flip)) * Math.sign(flip || 1), 1);
+      } else if (isNearBokeh) {
+        ctx.scale(1.25 + this.depth * 0.32, 1.25 + this.depth * 0.32);
+      }
+      ctx.drawImage(this.sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
+      ctx.restore();
+    }
+  }
+
+  function randomBirdPalette() {
+    const palettes = [
+      {
+        head: "rgba(18, 29, 34, 0.94)",
+        throat: "rgba(228, 218, 196, 0.82)",
+        body: "rgba(74, 63, 56, 0.86)",
+        belly: "rgba(218, 205, 178, 0.76)",
+        back: "rgba(22, 35, 48, 0.9)",
+        wingPrimary: "rgba(16, 25, 34, 0.9)",
+        wingSecondary: "rgba(142, 86, 48, 0.76)",
+        tail: "rgba(31, 29, 31, 0.88)",
+        beak: "rgba(190, 126, 42, 0.92)",
+        eye: "rgba(222, 255, 236, 0.95)",
+        stroke: "rgba(218, 244, 232, 0.28)",
+        glow: "rgba(126, 255, 226, 0.08)"
+      },
+      {
+        head: "rgba(28, 24, 26, 0.94)",
+        throat: "rgba(239, 226, 202, 0.82)",
+        body: "rgba(96, 59, 43, 0.86)",
+        belly: "rgba(231, 204, 162, 0.72)",
+        back: "rgba(50, 42, 49, 0.92)",
+        wingPrimary: "rgba(38, 34, 40, 0.9)",
+        wingSecondary: "rgba(190, 105, 45, 0.76)",
+        tail: "rgba(44, 34, 34, 0.9)",
+        beak: "rgba(213, 147, 54, 0.94)",
+        eye: "rgba(245, 255, 228, 0.95)",
+        stroke: "rgba(255, 220, 165, 0.26)",
+        glow: "rgba(255, 164, 78, 0.08)"
+      },
+      {
+        head: "rgba(15, 26, 42, 0.95)",
+        throat: "rgba(207, 221, 210, 0.78)",
+        body: "rgba(58, 73, 78, 0.84)",
+        belly: "rgba(195, 201, 187, 0.72)",
+        back: "rgba(9, 23, 37, 0.92)",
+        wingPrimary: "rgba(12, 24, 38, 0.9)",
+        wingSecondary: "rgba(105, 91, 77, 0.76)",
+        tail: "rgba(9, 18, 30, 0.9)",
+        beak: "rgba(170, 119, 48, 0.9)",
+        eye: "rgba(190, 255, 236, 0.95)",
+        stroke: "rgba(178, 255, 235, 0.28)",
+        glow: "rgba(126, 238, 255, 0.08)"
+      },
+      {
+        head: "rgba(33, 29, 24, 0.94)",
+        throat: "rgba(226, 214, 190, 0.82)",
+        body: "rgba(92, 75, 56, 0.86)",
+        belly: "rgba(232, 211, 180, 0.72)",
+        back: "rgba(52, 43, 36, 0.92)",
+        wingPrimary: "rgba(42, 35, 31, 0.9)",
+        wingSecondary: "rgba(173, 112, 55, 0.76)",
+        tail: "rgba(35, 31, 30, 0.88)",
+        beak: "rgba(198, 137, 51, 0.92)",
+        eye: "rgba(247, 252, 226, 0.95)",
+        stroke: "rgba(242, 221, 186, 0.24)",
+        glow: "rgba(212, 170, 88, 0.08)"
+      }
+    ];
+    return palettes[Math.floor(Math.random() * palettes.length)];
+  }
+
+  class FlockingBird {
+    constructor(system, index) {
+      this.system = system;
+      this.index = index;
+      this.x = system.rand(system.width * 0.12, system.width * 0.88);
+      this.y = system.rand(system.height * 0.12, system.height * 0.42);
+      this.vx = system.rand(-1.2, 1.2);
+      this.vy = system.rand(-0.35, 0.35);
+      this.ax = 0;
+      this.ay = 0;
+      this.maxSpeed = system.rand(2.05, 2.75);
+      this.maxForce = system.rand(0.034, 0.052);
+      this.size = system.rand(8.5, 13.5);
+      this.wingPhase = Math.random() * Math.PI * 2;
+      this.wanderAngle = Math.random() * Math.PI * 2;
+      this.wanderTimer = 0;
+      this.targetX = this.x;
+      this.targetY = this.y;
+      this.glideTimer = system.rand(0.4, 2.6);
+      this.alpha = system.rand(0.55, 0.82);
+      this.orbitOffset = (Math.PI * 2 * index) / 5;
+      this.bank = 0;
+      this.palette = randomBirdPalette();
+      this.bodyScale = system.rand(0.88, 1.16);
+      this.wingScale = system.rand(0.9, 1.2);
+      this.tailScale = system.rand(0.82, 1.22);
+      this.beakScale = system.rand(0.75, 1.15);
+      this.markingSeed = Math.random();
+      this.pickCruiseTarget();
+    }
+
+    pickCruiseTarget() {
+      this.targetX = this.system.rand(this.system.width * 0.08, this.system.width * 0.92);
+      this.targetY = this.system.rand(this.system.height * 0.08, this.system.height * 0.42);
+      this.wanderTimer = this.system.rand(2.2, 5.6);
+    }
+
+    limitVector(x, y, limit) {
+      const length = Math.hypot(x, y);
+      if (length > limit && length > 0.0001) {
+        const scale = limit / length;
+        return { x: x * scale, y: y * scale };
+      }
+      return { x, y };
+    }
+
+    applySeek(targetX, targetY, strength = 1) {
+      const dx = targetX - this.x;
+      const dy = targetY - this.y;
+      const distance = Math.hypot(dx, dy) || 1;
+      const slowingRadius = 130;
+      const desiredSpeed = distance < slowingRadius
+        ? this.maxSpeed * Math.max(0.32, distance / slowingRadius)
+        : this.maxSpeed;
+      const desiredX = (dx / distance) * desiredSpeed;
+      const desiredY = (dy / distance) * desiredSpeed;
+      const steer = this.limitVector(desiredX - this.vx, desiredY - this.vy, this.maxForce * strength);
+      this.ax += steer.x;
+      this.ay += steer.y;
+    }
+
+    update(dt, time, mouseTarget) {
+      const dtScale = dt * 60;
+      this.ax = 0;
+      this.ay = 0;
+
+      const mouseFresh = mouseTarget.active && time - mouseTarget.lastMove < 8;
+      if (mouseFresh) {
+        const dx = mouseTarget.x - this.x;
+        const dy = mouseTarget.y - this.y;
+        const distance = Math.hypot(dx, dy);
+        const orbitRadius = 44 + this.index * 13;
+        if (distance < 115) {
+          const angle = Math.atan2(dy, dx) + Math.PI * 0.5 + Math.sin(time * 0.8 + this.orbitOffset) * 0.45;
+          const orbitX = mouseTarget.x + Math.cos(angle + this.orbitOffset) * orbitRadius;
+          const orbitY = mouseTarget.y + Math.sin(angle + this.orbitOffset) * orbitRadius * 0.62;
+          this.applySeek(orbitX, orbitY, 0.82);
+        } else {
+          const offsetAngle = this.orbitOffset + Math.sin(time * 0.45 + this.index) * 0.6;
+          this.applySeek(
+            mouseTarget.x + Math.cos(offsetAngle) * orbitRadius,
+            mouseTarget.y + Math.sin(offsetAngle) * orbitRadius * 0.55,
+            1
+          );
+        }
+      } else {
+        this.wanderTimer -= dt;
+        this.wanderAngle += Math.sin(time * 0.31 + this.index) * 0.015;
+        if (this.wanderTimer <= 0 || Math.hypot(this.targetX - this.x, this.targetY - this.y) < 60) {
+          this.pickCruiseTarget();
+        }
+        const driftX = Math.cos(this.wanderAngle) * 52;
+        const driftY = Math.sin(this.wanderAngle * 0.8) * 24;
+        this.applySeek(this.targetX + driftX, this.targetY + driftY, 0.72);
+      }
+
+      const speed = Math.hypot(this.vx, this.vy);
+      const accelCross = (this.vx * this.ay - this.vy * this.ax) / (speed || 1);
+      this.bank += (accelCross * 12 - this.bank) * dt * 8;
+
+      const accel = Math.hypot(this.ax, this.ay);
+      this.vx += this.ax * dtScale;
+      this.vy += this.ay * dtScale;
+      const limited = this.limitVector(this.vx, this.vy, this.maxSpeed);
+      this.vx = limited.x;
+      this.vy = limited.y;
+      this.x += this.vx * dtScale;
+      this.y += this.vy * dtScale;
+
+      const margin = 80;
+      if (this.x < -margin) this.x = this.system.width + margin;
+      if (this.x > this.system.width + margin) this.x = -margin;
+      if (this.y < -margin) this.y = this.system.height * 0.38;
+      if (this.y > this.system.height + margin) this.y = this.system.height * 0.12;
+
+      this.glideTimer -= dt;
+      const speedNorm = Math.min(1, speed / this.maxSpeed);
+      const turning = Math.min(1, accel / this.maxForce);
+      let flapRate = 0.05 + speedNorm * 0.18 + turning * 0.16;
+
+      if (this.glideTimer <= 0 && speedNorm < 0.6 && turning < 0.3) {
+        this.glideTimer = this.system.rand(0.8, 3.2);
+      } else if (this.glideTimer > 0) {
+        if (speedNorm < 0.45 || turning > 0.4) {
+          this.glideTimer = 0;
+        } else {
+          this.wingPhase += (Math.PI * 2.5 - (this.wingPhase % (Math.PI * 2))) * 0.1 * dtScale;
+          flapRate = 0;
+        }
+      }
+      this.wingPhase += flapRate * dtScale;
+    }
+
+    draw(ctx) {
+      const speed = Math.hypot(this.vx, this.vy);
+      const heading = Math.atan2(this.vy, this.vx);
+      const speedNorm = Math.min(1, speed / this.maxSpeed);
+      let flap = Math.sin(this.wingPhase);
+      const wingFold = Math.max(0, -flap) * 0.6;
+      const isGliding = this.glideTimer > 0 && speedNorm >= 0.45;
+
+      if (isGliding) flap = 0;
+
+      const p = this.palette;
+      const bodyLen = this.size * 1.55 * this.bodyScale;
+      const bodyWidth = this.size * 0.48 * this.bodyScale;
+      const span = this.size * 3.15 * this.wingScale * (1 - wingFold * 0.4);
+      const sweep = this.size * (wingFold * 1.45 + speedNorm * 0.82);
+      const bankScale = Math.max(0.68, 1 - Math.abs(this.bank) * 0.28);
+      const tailSpread = (1 - speedNorm) * 0.62 + Math.abs(this.bank) * 0.72 + 0.34;
+      const nearSide = this.bank >= 0 ? 1 : -1;
+      const farSide = -nearSide;
+
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(heading);
+      ctx.scale(1, bankScale);
+
+      ctx.globalAlpha = this.alpha;
+      ctx.lineWidth = 1.05;
+
+      ctx.save();
+      ctx.globalAlpha = this.alpha * 0.52;
+      ctx.fillStyle = p.glow;
+      ctx.beginPath();
+      ctx.ellipse(bodyLen * 0.04, 0, bodyLen * 1.55, bodyWidth * 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      const drawTailFeather = (offset, lengthScale, widthScale, color) => {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.strokeStyle = p.stroke;
+        ctx.beginPath();
+        ctx.moveTo(-bodyLen * 0.34, offset * bodyWidth * 0.22);
+        ctx.lineTo(-bodyLen * (0.92 + lengthScale * 0.2) * this.tailScale, offset * bodyWidth * tailSpread * widthScale);
+        ctx.quadraticCurveTo(
+          -bodyLen * (1.12 + lengthScale * 0.2) * this.tailScale,
+          offset * bodyWidth * 0.22,
+          -bodyLen * (0.9 + lengthScale * 0.2) * this.tailScale,
+          -offset * bodyWidth * tailSpread * widthScale * 0.38
+        );
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      };
+
+      drawTailFeather(0, 0.38, 0.26, p.tail);
+      drawTailFeather(1, 0.1, 0.82, p.back);
+      drawTailFeather(-1, 0.1, 0.82, p.tail);
+
+      const drawWing = (side) => {
+        const sign = side;
+        const bankOffset = this.bank * sign * this.size * 0.8;
+        const shoulderX = bodyLen * 0.35;
+        const shoulderY = bodyWidth * 0.7 * sign;
+        const wristX = shoulderX - span * 0.15 - sweep * 0.4;
+        const wristY = span * 0.45 * sign * (1 - wingFold * 0.3) + bankOffset;
+        const tipX = shoulderX - span * 0.2 - sweep * 1.5;
+        const tipY = span * sign * (1 - wingFold * 0.6) + bankOffset;
+        const flapY = flap * this.size * 0.6 * sign;
+        const isNear = side === nearSide;
+        const alpha = this.alpha * (isNear ? 1 : 0.68);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = p.wingPrimary;
+        ctx.strokeStyle = p.stroke;
+        ctx.lineWidth = isNear ? 1.15 : 0.85;
+        ctx.beginPath();
+        ctx.moveTo(shoulderX, shoulderY);
+        ctx.quadraticCurveTo(wristX + bodyLen * 0.3, wristY + flapY * 0.6, tipX, tipY + flapY);
+        ctx.bezierCurveTo(
+          wristX - bodyLen * 0.8,
+          wristY + flapY * 0.5 + this.size * 0.8 * sign,
+          shoulderX - bodyLen * 0.9,
+          shoulderY + this.size * 0.4 * sign,
+          shoulderX - bodyLen * 0.1,
+          shoulderY
+        );
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = p.wingSecondary;
+        ctx.beginPath();
+        ctx.moveTo(shoulderX - bodyLen * 0.04, shoulderY);
+        ctx.bezierCurveTo(
+          wristX - bodyLen * 0.1,
+          wristY + flapY * 0.22,
+          tipX + span * 0.26,
+          tipY + flapY * 0.62,
+          shoulderX - span * 0.46,
+          shoulderY + sign * this.size * 0.58
+        );
+        ctx.bezierCurveTo(
+          shoulderX - span * 0.2,
+          shoulderY + sign * this.size * 0.38,
+          shoulderX - bodyLen * 0.12,
+          shoulderY + sign * this.size * 0.18,
+          shoulderX - bodyLen * 0.04,
+          shoulderY
+        );
+        ctx.fill();
+
+        ctx.strokeStyle = p.stroke;
+        ctx.lineWidth = 0.72;
+        for (let i = 0; i < 5; i++) {
+          const t = i / 4;
+          const featherX = shoulderX - span * (0.18 + t * 0.62) - sweep * (0.18 + t * 0.75);
+          const featherY = shoulderY + sign * this.size * (0.18 + t * 0.42) + flapY * (0.22 + t * 0.55);
+          ctx.beginPath();
+          ctx.moveTo(shoulderX - bodyLen * 0.08 - t * span * 0.08, shoulderY + sign * this.size * (0.08 + t * 0.08));
+          ctx.quadraticCurveTo(
+            featherX + span * 0.15,
+            featherY - sign * this.size * 0.25,
+            featherX,
+            featherY
+          );
+          ctx.stroke();
+        }
+        ctx.restore();
+      };
+
+      if (farSide === 1) drawWing(1);
+      else drawWing(-1);
+
+      ctx.save();
+      ctx.fillStyle = p.body;
+      ctx.strokeStyle = p.stroke;
+      ctx.lineWidth = 1.05;
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 1.04, -bodyWidth * 0.05);
+      ctx.bezierCurveTo(bodyLen * 0.78, -bodyWidth * 0.88, bodyLen * 0.08, -bodyWidth * 0.92, -bodyLen * 0.42, -bodyWidth * 0.44);
+      ctx.bezierCurveTo(-bodyLen * 0.68, -bodyWidth * 0.16, -bodyLen * 0.62, bodyWidth * 0.3, -bodyLen * 0.26, bodyWidth * 0.58);
+      ctx.bezierCurveTo(bodyLen * 0.22, bodyWidth * 0.96, bodyLen * 0.82, bodyWidth * 0.62, bodyLen * 1.04, -bodyWidth * 0.05);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = p.belly;
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.74, bodyWidth * 0.12);
+      ctx.bezierCurveTo(bodyLen * 0.38, bodyWidth * 0.72, -bodyLen * 0.2, bodyWidth * 0.74, -bodyLen * 0.42, bodyWidth * 0.28);
+      ctx.bezierCurveTo(-bodyLen * 0.08, bodyWidth * 0.48, bodyLen * 0.42, bodyWidth * 0.36, bodyLen * 0.74, bodyWidth * 0.12);
+      ctx.fill();
+
+      ctx.fillStyle = p.back;
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.82, -bodyWidth * 0.32);
+      ctx.bezierCurveTo(bodyLen * 0.28, -bodyWidth * 0.72, -bodyLen * 0.24, -bodyWidth * 0.62, -bodyLen * 0.48, -bodyWidth * 0.26);
+      ctx.bezierCurveTo(-bodyLen * 0.02, -bodyWidth * 0.42, bodyLen * 0.46, -bodyWidth * 0.3, bodyLen * 0.82, -bodyWidth * 0.32);
+      ctx.fill();
+      ctx.restore();
+
+      if (nearSide === 1) drawWing(1);
+      else drawWing(-1);
+
+      ctx.save();
+      ctx.fillStyle = p.head;
+      ctx.strokeStyle = p.stroke;
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.ellipse(bodyLen * 0.98, -bodyWidth * 0.22, bodyWidth * 0.5, bodyWidth * 0.42, -0.12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = p.throat;
+      ctx.beginPath();
+      ctx.ellipse(bodyLen * 0.82, bodyWidth * 0.02, bodyWidth * 0.28, bodyWidth * 0.18, 0.12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = p.beak;
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 1.36, -bodyWidth * 0.22);
+      ctx.lineTo(bodyLen * (1.76 + this.beakScale * 0.08), -bodyWidth * 0.1);
+      ctx.lineTo(bodyLen * 1.34, bodyWidth * 0.02);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = p.eye;
+      ctx.beginPath();
+      ctx.arc(bodyLen * 1.1, -bodyWidth * 0.32, Math.max(0.9, this.size * 0.075), 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = p.stroke;
+      ctx.lineWidth = 0.62;
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.46, -bodyWidth * 0.5);
+      ctx.quadraticCurveTo(bodyLen * 0.02, -bodyWidth * (0.6 + this.markingSeed * 0.18), -bodyLen * 0.34, -bodyWidth * 0.18);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bodyLen * 0.42, bodyWidth * 0.38);
+      ctx.quadraticCurveTo(bodyLen * 0.1, bodyWidth * 0.58, -bodyLen * 0.22, bodyWidth * 0.36);
+      ctx.stroke();
+      ctx.restore();
+      ctx.restore();
+    }
+  }
+
+  class SeasonParticleBackground {
+    constructor(canvasElement, switcherElement) {
+      this.canvas = canvasElement;
+      this.ctx = this.canvas.getContext("2d", { alpha: true });
+      this.switcher = switcherElement;
+      this.sprites = createSeasonSprites();
+      this.particles = [];
+      this.birds = [];
+      this.width = window.innerWidth;
+      this.height = window.innerHeight;
+      this.dpr = 1;
+      this.currentSeason = DEFAULT_SEASON;
+      this.raf = 0;
+      this.lastTime = performance.now();
+      this.resizeTimer = 0;
+      this.gust = 0;
+      this.mouse = { x: 0, y: 0 };
+      this.mouseTarget = { x: this.width * 0.5, y: this.height * 0.25, active: false, lastMove: -999 };
+
+      this.resize();
+      this.createBirds();
+      this.bindEvents();
+      this.setSeason(this.currentSeason, true);
+    }
+
+    rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    bindEvents() {
+      window.addEventListener("resize", () => {
+        window.clearTimeout(this.resizeTimer);
+        this.resizeTimer = window.setTimeout(() => this.resize(), 140);
+      }, { passive: true });
+
+      window.addEventListener("mousemove", (event) => {
+        this.mouse.x = (event.clientX / Math.max(1, this.width) - 0.5) * 2;
+        this.mouse.y = (event.clientY / Math.max(1, this.height) - 0.5) * 2;
+        this.mouseTarget.x = event.clientX;
+        this.mouseTarget.y = event.clientY;
+        this.mouseTarget.active = true;
+        this.mouseTarget.lastMove = performance.now() * 0.001;
+      }, { passive: true });
+
+      window.addEventListener("mouseleave", () => {
+        this.mouseTarget.active = false;
+      }, { passive: true });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) this.stop();
+        else this.start();
+      });
+
+      if (this.switcher) {
+        this.switcher.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-season-bg]");
+          if (!button) return;
+          const seasonName = button.dataset.seasonBg;
+          this.setSeason(seasonName);
+          const seasonValues = { spring: "0", summer: "1", autumn: "2.18", winter: "3" };
+          if (epochSlider && seasonValues[seasonName] !== undefined) {
+            epochSlider.value = seasonValues[seasonName];
+            epochSlider.dispatchEvent(new Event("input", { bubbles: true }));
+          }
+        });
+      }
+    }
+
+    resize() {
+      this.width = window.innerWidth;
+      this.height = window.innerHeight;
+      this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      this.canvas.width = Math.floor(this.width * this.dpr);
+      this.canvas.height = Math.floor(this.height * this.dpr);
+      this.canvas.style.width = `${this.width}px`;
+      this.canvas.style.height = `${this.height}px`;
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      if (this.birds && this.birds.length) {
+        const desiredCount = this.width < 760 ? 3 : 5;
+        if (this.birds.length !== desiredCount) {
+          this.createBirds();
+        } else {
+          for (let i = 0; i < this.birds.length; i++) {
+            this.birds[i].x = Math.max(0, Math.min(this.width, this.birds[i].x));
+            this.birds[i].y = Math.max(0, Math.min(this.height * 0.55, this.birds[i].y));
+            this.birds[i].pickCruiseTarget();
+          }
+        }
+      }
+    }
+
+    targetCount(seasonName) {
+      const areaScale = Math.min(1.6, Math.max(0.62, (this.width * this.height) / (1280 * 720)));
+      return Math.floor(seasonConfigs[seasonName].baseCount * areaScale);
+    }
+
+    createBirds() {
+      const count = this.width < 760 ? 3 : 5;
+      this.birds.length = 0;
+      for (let i = 0; i < count; i++) {
+        this.birds.push(new FlockingBird(this, i));
+      }
+    }
+
+    setSeason(seasonName, immediate = false) {
+      if (!seasonConfigs[seasonName]) return;
+      if (immediate && seasonName === this.currentSeason && this.particles.length > 0) {
+        this.updateButtons();
+        return;
+      }
+      if (!immediate && seasonName === this.currentSeason) return;
+      this.currentSeason = seasonName;
+      this.particles.forEach((particle) => particle.retire());
+      const count = this.targetCount(seasonName);
+      const seedCount = immediate ? count : Math.ceil(count * 0.42);
+      for (let i = 0; i < seedCount; i++) {
+        this.particles.push(new Particle(this, seasonName, !immediate));
+      }
+      this.updateButtons();
+    }
+
+    updateButtons() {
+      if (!this.switcher) return;
+      this.switcher.querySelectorAll("[data-season-bg]").forEach((button) => {
+        button.classList.toggle("active", button.dataset.seasonBg === this.currentSeason);
+      });
+    }
+
+    maintainPopulation() {
+      let active = 0;
+      for (let i = 0; i < this.particles.length; i++) {
+        const particle = this.particles[i];
+        if (!particle.retiring && particle.seasonName === this.currentSeason) active++;
+      }
+      const target = this.targetCount(this.currentSeason);
+      const addCount = Math.min(4, Math.max(0, target - active));
+      for (let i = 0; i < addCount; i++) {
+        this.particles.push(new Particle(this, this.currentSeason, true));
+      }
+    }
+
+    start() {
+      if (this.raf) return;
+      this.lastTime = performance.now();
+      const tick = (now) => {
+        this.raf = requestAnimationFrame(tick);
+        const dt = Math.min(0.04, Math.max(0.001, (now - this.lastTime) / 1000));
+        this.lastTime = now;
+        this.update(dt, now * 0.001);
+        this.render();
+      };
+      this.raf = requestAnimationFrame(tick);
+    }
+
+    stop() {
+      if (!this.raf) return;
+      cancelAnimationFrame(this.raf);
+      this.raf = 0;
+    }
+
+    update(dt, time) {
+      const config = seasonConfigs[this.currentSeason];
+      if (this.currentSeason === "autumn" && Math.random() < config.gustChance) {
+        this.gust = config.gustStrength;
+      }
+      this.gust *= 0.965;
+      this.maintainPopulation();
+      for (let i = this.particles.length - 1; i >= 0; i--) {
+        const particle = this.particles[i];
+        particle.update(dt, time, this.gust);
+        if (particle.dead) this.particles.splice(i, 1);
+      }
+      for (let i = 0; i < this.birds.length; i++) {
+        this.birds[i].update(dt, time, this.mouseTarget);
+      }
+    }
+
+    render() {
+      this.ctx.clearRect(0, 0, this.width, this.height);
+      this.ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < this.particles.length; i++) {
+        this.particles[i].draw(this.ctx, this.mouse);
+      }
+      this.ctx.globalCompositeOperation = "screen";
+      this.birds.sort((a, b) => a.bodyScale - b.bodyScale);
+      for (let i = 0; i < this.birds.length; i++) {
+        this.birds[i].draw(this.ctx);
+      }
+      this.ctx.globalCompositeOperation = "source-over";
+    }
+  }
+
+  function seasonNameFromEpoch(value) {
+    const numeric = parseFloat(value);
+    if (numeric < 0.75) return "spring";
+    if (numeric < 1.75) return "summer";
+    if (numeric < 2.55) return "autumn";
+    return "winter";
+  }
+
+  const seasonParticleBackground = new SeasonParticleBackground(seasonCanvas, seasonSwitcher);
+  seasonParticleBackground.setSeason(DEFAULT_SEASON, true);
+  seasonParticleBackground.updateButtons();
+  seasonParticleBackground.start();
+  epochSlider.addEventListener("input", () => {
+    seasonParticleBackground.setSeason(seasonNameFromEpoch(epochSlider.value));
+  });
+
+  // --- Constants & Globals ---
+  const REGION_CANOPY = 0;
+  const REGION_ROOT = 1;
+  const REGION_TRUNK = 2;
+  const SEED_POINT = new THREE.Vector3(0, -4.4, 0);
+  const TOTAL_HOTSPOTS = 5;
+  const CONFIG = {
+    colors: {
+      background: 0x000002,
+      fog: 0x020407,
+      reflection: 0x071018,
+      dust: 0xd7fff1,
+      rootFlow: 0x55d9ff,
+      branchLine: 0x8effdc,
+      glowCore: 0xf5fff8,
+      glowHalo: 0xa6ffdf,
+      rootHalo: 0x4d9fff,
+      symbioticLine: 0xffd700,
+      swarm: 0xebffe8,
+      rootBase: 0x281d4a,
+      rootGlow: 0x4dcaff,
+      seasons: [0xa6ffdf, 0xcffff0, 0xffba75, 0xd7ecff]
+    },
+    fogDensity: 0.023,
+    quality: {
+      pixelRatioMobile: 1.25,
+      pixelRatioMax: 1.75,
+      swarmMobile: 48,
+      swarmDesktop: 90,
+      dustMobile: 700,
+      dustDesktop: 1400,
+      fallingMobile: 120,
+      fallingDesktop: 240,
+      starsMobile: 850,
+      starsDesktop: 1700,
+      rootFlowMobile: 42,
+      rootFlowDesktop: 78
+    },
+    wind: {
+      autumnStart: 2.0,
+      swirlFrequency: 1.7,
+      swirlTimeScale: 0.8,
+      swirlStrength: 0.006,
+      crossFrequency: 1.3,
+      crossTimeScale: 0.6,
+      crossStrength: 0.005,
+      verticalFrequency: 0.9,
+      verticalStrength: -0.003,
+      winterThreshold: 2.5
+    },
+    particles: {
+      dustBoundsX: 17,
+      dustTop: 10,
+      dustBottom: -12,
+      fallingBounds: 12,
+      fallingBottom: -7.2,
+      fallingTop: 6.8,
+      fallingWindScale: 2.2,
+      fallingDownDrift: 0.002,
+      fallingUpDrift: 0.004,
+      rootFlowStep: 0.006,
+      rootFlowWobble: 0.018
+    },
+    swarm: {
+      baseAttract: 0.0005,
+      ritualAttract: 0.0018,
+      mouseRepelDistance: 4,
+      mouseRepelStrength: 0.001,
+      velocityLimit: 0.04
+    },
+    animation: {
+      growthRotation: 0.002,
+      treeRotation: 0.0018,
+      hotspotRevealLerp: 0.05,
+      ringScaleLerp: 0.045
+    }
+  };
+
+  function createQualitySettings() {
+    const isSmallScreen = window.innerWidth < 760;
+    return {
+      pixelRatio: isSmallScreen ? CONFIG.quality.pixelRatioMobile : Math.min(window.devicePixelRatio, CONFIG.quality.pixelRatioMax),
+      swarmCount: isSmallScreen ? CONFIG.quality.swarmMobile : CONFIG.quality.swarmDesktop,
+      dustCount: isSmallScreen ? CONFIG.quality.dustMobile : CONFIG.quality.dustDesktop,
+      fallingCount: isSmallScreen ? CONFIG.quality.fallingMobile : CONFIG.quality.fallingDesktop,
+      starCount: isSmallScreen ? CONFIG.quality.starsMobile : CONFIG.quality.starsDesktop,
+      rootFlowCount: isSmallScreen ? CONFIG.quality.rootFlowMobile : CONFIG.quality.rootFlowDesktop
+    };
+  }
+
+  let quality = createQualitySettings();
+
+  let journeyStarted = false;
+  let growthStartTime = 0;
+  let growthProgress = 0;
+  let audioScape = null;
+  let hovered = null;
+  let previousHotspot = null;
+  let growthChapterAnnounced = false;
+  let isAutoPanning = false;
+  let completionTriggered = false;
+  let completionStartTime = -1;
+
+  const chapters = [
+    { id: "seed", title: "Where It Began", hint: "Every ending keeps the shape of a beginning." },
+    { id: "roots", title: "What Took Root", hint: "Some things leave us, yet remain beneath the surface." },
+    { id: "trunk", title: "The Years Between", hint: "Time does not erase everything. It teaches each memory where to live." },
+    { id: "canopy", title: "The Light We Shared", hint: "For a while, two lives leaned toward the same sky." },
+    { id: "symbiosis", title: "What We Became", hint: "No one leaves unchanged after being deeply known." },
+    { id: "winter", title: "A Gentle Letting Go", hint: "To remember without holding on is another kind of love." }
+  ];
+  const chapterState = {
+    current: "seed"
+  };
+  const discoveredHotspots = new Set();
+  const memoryRings = [];
+
+  // --- Scene Setup ---
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(CONFIG.colors.background);
+  scene.fog = new THREE.FogExp2(CONFIG.colors.fog, CONFIG.fogDensity);
+
+  const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 120);
+  camera.position.set(0, 3.8, 16);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // 移动端及性能底线：最大 1.75
+  renderer.setPixelRatio(quality.pixelRatio);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.055;
+  controls.minDistance = 4.5;
+  controls.maxDistance = 28;
+  controls.maxPolarAngle = Math.PI * 0.92; // 允许看向地下，但不迷失
+  controls.target.set(0, 2.4, 0);
+
+  const tree = new THREE.Group();
+  scene.add(tree);
+
+  const ringGroup = new THREE.Group();
+  tree.add(ringGroup);
+
+  // --- Data Arrays ---
+  const points = [];
+  const lineVertices = [];
+  const branchTips = [];
+  const rootTips = [];
+  const regionFlags = [];
+  const growthFactors = [];
+
+  function addPoint(vector, region) {
+    points.push(vector.x, vector.y, vector.z);
+    regionFlags.push(region);
+    // 计算生长因子：越靠近底部、越靠近中心，出现越早
+    const distFromSeed = vector.distanceTo(SEED_POINT);
+    let factor = THREE.MathUtils.clamp((vector.y + 5) / 12 + distFromSeed * 0.02, 0.05, 0.95);
+    if (region === REGION_ROOT) factor *= 0.8; // 根系略早发芽
+    growthFactors.push(factor);
+  }
+
+  function addLine(a, b) {
+    lineVertices.push(a.x, a.y, a.z, b.x, b.y, b.z);
+  }
+
+  function randomSpread(scale) {
+    return (Math.random() - 0.5) * scale;
+  }
+
+  // --- Tree & Root Generation ---
+  function buildTree() {
+    let previous = SEED_POINT.clone();
+
+    for (let i = 0; i < 170; i += 1) {
+      const t = i / 169;
+      const radius = 0.16 + t * 0.42;
+      const twist = t * Math.PI * 8.8;
+      const current = new THREE.Vector3(
+        Math.cos(twist) * radius + randomSpread(0.16),
+        -4.2 + t * 8.2,
+        Math.sin(twist) * radius + randomSpread(0.16)
+      );
+      addPoint(current, REGION_TRUNK);
+      addLine(previous, current);
+      previous = current;
+
+      for (let spark = 0; spark < 4; spark += 1) {
+        addPoint(current.clone().add(new THREE.Vector3(randomSpread(0.3), randomSpread(0.2), randomSpread(0.3))), REGION_TRUNK);
+      }
+
+      if (i > 28 && i % 11 === 0) {
+        const branchCount = i > 80 ? 3 : 2;
+        for (let b = 0; b < branchCount; b += 1) {
+          createBranch(current, t, twist + b * 1.9, REGION_CANOPY);
+        }
+      }
+    }
+  }
+
+  function createBranch(origin, t, baseAngle, region) {
+    const length = THREE.MathUtils.lerp(1.3, 4.9, t) * (0.78 + Math.random() * 0.46);
+    const segments = 12 + Math.floor(Math.random() * 12);
+    const direction = new THREE.Vector3(
+      Math.cos(baseAngle + randomSpread(1.0)),
+      THREE.MathUtils.lerp(0.18, 0.62, t),
+      Math.sin(baseAngle + randomSpread(1.0))
+    ).normalize();
+    let previous = origin.clone();
+
+    for (let i = 1; i <= segments; i += 1) {
+      const n = i / segments;
+      const curl = new THREE.Vector3(
+        Math.sin(n * Math.PI * 2 + baseAngle) * 0.34,
+        randomSpread(0.18),
+        Math.cos(n * Math.PI * 2 + baseAngle) * 0.34
+      );
+      const current = origin.clone()
+        .add(direction.clone().multiplyScalar(length * n))
+        .add(curl.multiplyScalar(n))
+        .add(new THREE.Vector3(randomSpread(0.22), randomSpread(0.18), randomSpread(0.22)));
+
+      addPoint(current, region);
+      addLine(previous, current);
+
+      for (let spark = 0; spark < 6; spark += 1) {
+        const scatter = new THREE.Vector3(randomSpread(0.56), randomSpread(0.5), randomSpread(0.56));
+        addPoint(current.clone().add(scatter.multiplyScalar(0.45 + n)), region);
+      }
+
+      if (n > 0.45 && Math.random() > 0.74) {
+        createTwig(current, direction, baseAngle + randomSpread(1.2), n, region);
+      }
+      previous = current;
+    }
+    if (region === REGION_CANOPY) branchTips.push(previous.clone());
+    else rootTips.push(previous.clone());
+  }
+
+  function createTwig(origin, parentDirection, angle, weight, region) {
+    const twigDirection = parentDirection.clone()
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), angle)
+      .add(new THREE.Vector3(randomSpread(0.5), 0.25 + Math.random() * 0.28, randomSpread(0.5)))
+      .normalize();
+    if (region === REGION_ROOT) twigDirection.y *= -1; // 向下
+    const end = origin.clone().add(twigDirection.multiplyScalar(0.65 + weight * 1.5));
+
+    addLine(origin, end);
+    for (let i = 0; i < 7; i += 1) {
+      addPoint(origin.clone().lerp(end, i / 6).add(new THREE.Vector3(randomSpread(0.16), randomSpread(0.16), randomSpread(0.16))), region);
+    }
+  }
+
+  function buildRootNetwork() {
+    let previous = SEED_POINT.clone();
+    for (let i = 0; i < 30; i += 1) {
+      const t = i / 29;
+      const radius = 0.2 + t * 0.3;
+      const twist = t * Math.PI * 4;
+      const current = new THREE.Vector3(
+        Math.cos(twist) * radius + randomSpread(0.2),
+        -4.4 - t * 3.5,
+        Math.sin(twist) * radius + randomSpread(0.2)
+      );
+      addPoint(current, REGION_TRUNK);
+      addLine(previous, current);
+      previous = current;
+
+      if (i > 5 && i % 6 === 0) {
+        for (let b = 0; b < 2; b += 1) {
+          createRootBranch(current, t, twist + b * 2.5);
+        }
+      }
+    }
+  }
+
+  function createRootBranch(origin, t, baseAngle) {
+    const length = THREE.MathUtils.lerp(1.5, 3.8, t);
+    const segments = 10 + Math.floor(Math.random() * 8);
+    const direction = new THREE.Vector3(
+      Math.cos(baseAngle + randomSpread(0.8)),
+      -THREE.MathUtils.lerp(0.3, 0.7, t), // 强制向下
+      Math.sin(baseAngle + randomSpread(0.8))
+    ).normalize();
+    let previous = origin.clone();
+
+    for (let i = 1; i <= segments; i += 1) {
+      const n = i / segments;
+      const current = origin.clone()
+        .add(direction.clone().multiplyScalar(length * n))
+        .add(new THREE.Vector3(randomSpread(0.3), randomSpread(0.2), randomSpread(0.3)));
+      
+      addPoint(current, REGION_ROOT);
+      addLine(previous, current);
+
+      for (let spark = 0; spark < 4; spark += 1) {
+        const scatter = new THREE.Vector3(randomSpread(0.4), randomSpread(0.4), randomSpread(0.4));
+        addPoint(current.clone().add(scatter.multiplyScalar(0.4 + n)), REGION_ROOT);
+      }
+      previous = current;
+    }
+    rootTips.push(previous.clone());
+  }
+
+  buildTree();
+  buildRootNetwork();
+
+  // --- Background & Atmosphere Systems ---
+  function createGlowTexture() {
+    const canvasTexture = document.createElement("canvas");
+    canvasTexture.width = 96;
+    canvasTexture.height = 96;
+    const context = canvasTexture.getContext("2d");
+    const gradient = context.createRadialGradient(48, 48, 0, 48, 48, 48);
+    gradient.addColorStop(0, "rgba(255,255,255,1)");
+    gradient.addColorStop(0.2, "rgba(210,255,238,0.78)");
+    gradient.addColorStop(0.58, "rgba(86,210,255,0.22)");
+    gradient.addColorStop(1, "rgba(0,0,0,0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 96, 96);
+    const texture = new THREE.CanvasTexture(canvasTexture);
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  const glowTexture = createGlowTexture();
+
+  function createStarDome() {
+    const count = quality.starCount;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const seeds = new Float32Array(count);
+    const radius = 58;
+
+    for (let i = 0; i < count; i += 1) {
+      const phi = Math.acos(THREE.MathUtils.randFloatSpread(2));
+      const theta = Math.random() * Math.PI * 2;
+      const r = radius + randomSpread(8);
+      const index = i * 3;
+      positions[index] = Math.sin(phi) * Math.cos(theta) * r;
+      positions[index + 1] = Math.cos(phi) * r * 0.72 + 1.5;
+      positions[index + 2] = Math.sin(phi) * Math.sin(theta) * r;
+      seeds[i] = Math.random() * Math.PI * 2;
+
+      const warmth = Math.random();
+      colors[index] = 0.42 + warmth * 0.34;
+      colors[index + 1] = 0.62 + warmth * 0.24;
+      colors[index + 2] = 0.85 + warmth * 0.15;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 0.065,
+      map: glowTexture,
+      transparent: true,
+      opacity: 0.58,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true,
+      vertexColors: true
+    });
+
+    const stars = new THREE.Points(geometry, material);
+    stars.renderOrder = -10;
+    scene.add(stars);
+    return { points: stars, seeds };
+  }
+
+  function createReflectionPlane() {
+    const planeGeometry = new THREE.CircleGeometry(12, 96);
+    const planeMaterial = new THREE.MeshBasicMaterial({
+      color: CONFIG.colors.reflection,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.y = -0.18;
+    scene.add(plane);
+
+    const grid = new THREE.GridHelper(22, 34, 0x224c66, 0x0c2230);
+    grid.position.y = -0.16;
+    grid.material.transparent = true;
+    grid.material.opacity = 0.12;
+    grid.material.depthWrite = false;
+    scene.add(grid);
+    return { plane, grid };
+  }
+
+  function createAmbientDust() {
+    const count = quality.dustCount;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    const seeds = new Float32Array(count);
+
+    for (let i = 0; i < count; i += 1) {
+      const index = i * 3;
+      positions[index] = randomSpread(34);
+      positions[index + 1] = randomSpread(22) - 1;
+      positions[index + 2] = randomSpread(34);
+      velocities[index] = randomSpread(0.004);
+      velocities[index + 1] = randomSpread(0.003);
+      velocities[index + 2] = randomSpread(0.004);
+      seeds[i] = Math.random() * Math.PI * 2;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.018,
+      color: CONFIG.colors.dust,
+      transparent: true,
+      opacity: 0.16,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
+    });
+    const dust = new THREE.Points(geometry, material);
+    scene.add(dust);
+    return { points: dust, velocities, seeds };
+  }
+
+  function createFallingParticles() {
+    const count = quality.fallingCount;
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const seeds = new Float32Array(count);
+
+    for (let i = 0; i < count; i += 1) {
+      resetFallingParticle(positions, velocities, colors, seeds, i, parseFloat(epochSlider.value), true);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.06,
+      map: glowTexture,
+      transparent: true,
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      vertexColors: true,
+      sizeAttenuation: true
+    });
+    const falling = new THREE.Points(geometry, material);
+    scene.add(falling);
+    return { points: falling, velocities, colors, seeds };
+  }
+
+  function resetFallingParticle(positions, velocities, colors, seeds, i, season, scatterAll = false) {
+    const index = i * 3;
+    const canopyMode = season >= 1.7;
+    positions[index] = randomSpread(9);
+    positions[index + 1] = canopyMode ? 4.8 + Math.random() * 5.8 : -5.8 + Math.random() * 2.2;
+    positions[index + 2] = randomSpread(9);
+    if (scatterAll) {
+      positions[index + 1] = randomSpread(13);
+    }
+
+    velocities[index] = randomSpread(0.006);
+    velocities[index + 1] = canopyMode ? -(0.012 + Math.random() * 0.018) : 0.006 + Math.random() * 0.012;
+    velocities[index + 2] = randomSpread(0.006);
+    seeds[i] = Math.random() * Math.PI * 2;
+
+    if (canopyMode) {
+      colors[index] = 1.0;
+      colors[index + 1] = 0.58 + Math.random() * 0.32;
+      colors[index + 2] = 0.22;
+    } else {
+      colors[index] = 0.64;
+      colors[index + 1] = 1.0;
+      colors[index + 2] = 0.82 + Math.random() * 0.18;
+    }
+  }
+
+  function createRootEnergyFlow() {
+    const count = quality.rootFlowCount;
+    const positions = new Float32Array(count * 3);
+    const seeds = new Float32Array(count);
+    const speeds = new Float32Array(count);
+    const curves = [];
+    const rootCandidates = rootTips.length ? rootTips : [new THREE.Vector3(0, -7, 0)];
+
+    for (let i = 0; i < count; i += 1) {
+      const root = rootCandidates[Math.floor(Math.random() * rootCandidates.length)].clone();
+      const lift = new THREE.Vector3(randomSpread(1.2), -2.8 + randomSpread(1.5), randomSpread(1.2));
+      const anchor = new THREE.Vector3(randomSpread(0.4), -4.05 + randomSpread(0.45), randomSpread(0.4));
+      const curve = new THREE.QuadraticBezierCurve3(root, lift, anchor);
+      curves.push(curve);
+      seeds[i] = Math.random();
+      speeds[i] = 0.14 + Math.random() * 0.28;
+      const point = curve.getPoint(seeds[i]);
+      positions[i * 3] = point.x;
+      positions[i * 3 + 1] = point.y;
+      positions[i * 3 + 2] = point.z;
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      size: 0.09,
+      map: glowTexture,
+      color: CONFIG.colors.rootFlow,
+      transparent: true,
+      opacity: 0.78,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      sizeAttenuation: true
+    });
+    const flow = new THREE.Points(geometry, material);
+    scene.add(flow);
+    return { points: flow, curves, seeds, speeds };
+  }
+
+  const starDome = createStarDome();
+  const reflectionSurface = createReflectionPlane();
+  const ambientDust = createAmbientDust();
+  const fallingParticles = createFallingParticles();
+  const rootEnergyFlow = createRootEnergyFlow();
+
+  // --- Geometry Construction ---
+  const particleGeometry = new THREE.BufferGeometry();
+  const basePositions = new Float32Array(points);
+  const velocities = new Float32Array(points.length);
+  const colors = new Float32Array(points.length);
+  const v_region = new Float32Array(regionFlags);
+  const v_growth = new Float32Array(growthFactors);
+
+  for (let i = 0; i < points.length; i += 3) {
+    velocities[i] = (Math.random() - 0.5) * 0.02;
+    velocities[i + 1] = (Math.random() - 0.2) * 0.02;
+    velocities[i + 2] = (Math.random() - 0.5) * 0.02;
+    colors[i] = 1; colors[i + 1] = 1; colors[i + 2] = 1;
+  }
+
+  particleGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(points), 3));
+  particleGeometry.setAttribute("initialPosition", new THREE.BufferAttribute(basePositions, 3));
+  particleGeometry.setAttribute("velocity", new THREE.BufferAttribute(velocities, 3));
+  particleGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  particleGeometry.setAttribute("region", new THREE.BufferAttribute(v_region, 1));
+  particleGeometry.setAttribute("growth", new THREE.BufferAttribute(v_growth, 1));
+
+  const particleMaterial = new THREE.PointsMaterial({
+    size: 0.045,
+    transparent: true,
+    opacity: 0.92,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+    vertexColors: true
+  });
+  const particleCloud = new THREE.Points(particleGeometry, particleMaterial);
+  tree.add(particleCloud);
+
+  const lineGeometry = new THREE.BufferGeometry();
+  lineGeometry.setAttribute("position", new THREE.Float32BufferAttribute(lineVertices, 3));
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: CONFIG.colors.branchLine,
+    transparent: true,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  });
+  const branchLines = new THREE.LineSegments(lineGeometry, lineMaterial);
+  lineGeometry.setDrawRange(0, 0); // 初始全隐藏
+  tree.add(branchLines);
+
+  // --- Hotspots ---
+  const validCanopyTips = branchTips.filter(p => p.y > 1.5);
+  const validRootTips = rootTips.filter(p => p.y < -3.5);
+
+  const hotspotData = [
+    { 
+      title: "cure", 
+      text: "枯木犹有逢春日", 
+      isRoot: false, 
+      layer: "Memory", 
+      journal: "" 
+    },
+    { 
+      title: "Review", 
+      text: "只缘感君一回顾", 
+      isRoot: true, 
+      layer: "Memory", 
+      journal: "" 
+    },
+    { 
+      title: "departure", 
+      text: "愿许秋风离别意", 
+      isRoot: false, 
+      layer: "Memory", 
+      journal: "" 
+    },
+    { 
+      title: "Eternal", 
+      text: "摘下最喜欢的麦穗，然后闭着眼睛穿过整个麦田", 
+      isRoot: false, 
+      layer: "Memory", 
+      journal: "" 
+    },
+    { 
+      title: "agony", 
+      text: "自古逢秋悲寂寥", 
+      isRoot: true, 
+      layer: "Memory", 
+      journal: "" 
+    }
+  ];
+
+  const hotspots = new THREE.Group();
+  const hotspotObjects = [];
+  const glowMaterial = new THREE.MeshBasicMaterial({ color: CONFIG.colors.glowCore, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending });
+  const haloMaterial = new THREE.MeshBasicMaterial({ color: CONFIG.colors.glowHalo, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pickMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+
+  hotspotData.forEach((data) => {
+    const list = data.isRoot ? validRootTips : validCanopyTips;
+    if(list.length === 0) return;
+    const index = Math.floor(Math.random() * list.length);
+    const position = list.splice(index, 1)[0]; // 取出并移除，防止重叠
+
+    const node = new THREE.Group();
+    node.position.copy(position);
+    node.userData = data;
+
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.13, 24, 16), glowMaterial.clone());
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 16), haloMaterial.clone());
+    const picker = new THREE.Mesh(new THREE.SphereGeometry(0.7, 24, 16), pickMaterial);
+    
+    // 如果是地下，光晕偏蓝紫
+    if(data.isRoot) halo.material.color.setHex(CONFIG.colors.rootHalo);
+    
+    node.add(core, halo, picker);
+    node.scale.setScalar(0.001); // 初始隐藏
+    hotspots.add(node);
+    hotspotObjects.push(node);
+  });
+  tree.add(hotspots);
+
+  // --- Symbiotic Threads ---
+  const symbioticLines = new THREE.Group();
+  scene.add(symbioticLines);
+  const discoveredThreads = new Set();
+  const maxThreads = 3;
+
+  function maybeCreateSymbioticThread(prev, curr) {
+    if(!prev || !curr || prev === curr) return null;
+    const t1 = prev.userData.title;
+    const t2 = curr.userData.title;
+    const pairKey = [t1, t2].sort().join("::");
+
+    if (discoveredThreads.has(pairKey)) return null;
+    
+    let story = null;
+    if (pairKey === "Review::departure" || pairKey === "Eternal::departure") {
+      story = "秋风过后，枯木仍在等一场春。";
+    }
+    if (pairKey === "Review::cure" || pairKey === "agony::cure") {
+      story = "回顾之处，春意已在旧枝深处。";
+    }
+
+    if (story) {
+      discoveredThreads.add(pairKey);
+      cardText.textContent = story; // 覆盖默认文案
+
+      const p1 = new THREE.Vector3(); prev.getWorldPosition(p1);
+      const p2 = new THREE.Vector3(); curr.getWorldPosition(p2);
+      const mid = p1.clone().lerp(p2, 0.5).add(new THREE.Vector3(randomSpread(3), randomSpread(3), randomSpread(3)));
+
+      const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+      const pts = curve.getPoints(50);
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({ color: CONFIG.colors.symbioticLine, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false });
+      const line = new THREE.Line(geom, mat);
+      
+      symbioticLines.add(line);
+      setChapter("symbiosis");
+      if(symbioticLines.children.length > maxThreads) {
+        const old = symbioticLines.children[0];
+        old.geometry.dispose(); old.material.dispose();
+        symbioticLines.remove(old);
+      }
+      return story;
+    }
+    return null;
+  }
+
+  // --- Swarm (Fireflies) ---
+  const SWARM_COUNT = quality.swarmCount;
+  const swarmGeometry = new THREE.BufferGeometry();
+  const swarmPos = new Float32Array(SWARM_COUNT * 3);
+  const swarmVel = [];
+  const swarmCenter = new THREE.Vector3(0, 3.2, 0);
+  const completionSwarmCenter = new THREE.Vector3(0, 0.9, 0);
+
+  for(let i = 0; i < SWARM_COUNT; i++) {
+    swarmPos[i*3] = randomSpread(10);
+    swarmPos[i*3+1] = 2 + Math.random() * 5;
+    swarmPos[i*3+2] = randomSpread(10);
+    swarmVel.push(new THREE.Vector3(randomSpread(0.04), randomSpread(0.02), randomSpread(0.04)));
+  }
+  swarmGeometry.setAttribute('position', new THREE.BufferAttribute(swarmPos, 3));
+  const swarmMaterial = new THREE.PointsMaterial({
+    size: 0.18,
+    map: glowTexture,
+    color: CONFIG.colors.swarm,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+  const swarm = new THREE.Points(swarmGeometry, swarmMaterial);
+  scene.add(swarm);
+
+  // --- AudioScape (Generative Audio) ---
+  class AudioScape {
+    constructor() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+        this.master = this.ctx.createGain();
+        this.master.gain.value = 0.05; // 限制极低音量兜底
+        this.master.connect(this.ctx.destination);
+        
+        // 简单低通白噪声 (风)
+        this.noiseFilter = this.ctx.createBiquadFilter();
+        this.noiseFilter.type = 'lowpass';
+        this.noiseFilter.frequency.value = 400;
+        this.noiseFilter.connect(this.master);
+        this.noiseGain = this.ctx.createGain();
+        this.noiseGain.gain.value = 0;
+        this.noiseGain.connect(this.noiseFilter);
+
+        this.enabled = true;
+        this.createNoise();
+      } catch (e) {
+        this.enabled = false;
+        console.warn("Web Audio not supported or blocked.");
+      }
+    }
+
+    createNoise() {
+      if(!this.enabled) return;
+      const bufferSize = this.ctx.sampleRate * 2;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+      this.noiseSource = this.ctx.createBufferSource();
+      this.noiseSource.buffer = buffer;
+      this.noiseSource.loop = true;
+      this.noiseSource.connect(this.noiseGain);
+      this.noiseSource.start();
+    }
+
+    setSeason(s) {
+      if(!this.enabled || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      // Spring=1, Autumn=2, Winter=3
+      if (s < 1.5) { // Spring/Summer
+        this.noiseFilter.frequency.setTargetAtTime(800, t, 1.0);
+        this.noiseGain.gain.setTargetAtTime(0.01, t, 1.0);
+      } else if (s < 2.5) { // Autumn
+        this.noiseFilter.frequency.setTargetAtTime(1200, t, 1.0);
+        this.noiseGain.gain.setTargetAtTime(0.06, t, 1.0);
+      } else { // Winter
+        this.noiseFilter.frequency.setTargetAtTime(300, t, 1.0);
+        this.noiseGain.gain.setTargetAtTime(0.08, t, 1.0);
+      }
+    }
+
+    playWoodResonance() {
+      if(!this.enabled || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+      
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(65, t); // 低频木质
+      osc.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+      
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(200, t);
+      
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.8, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+      
+      osc.start(t);
+      osc.stop(t + 1.2);
+    }
+
+    setPageVisible(v) {
+      if(!this.enabled || !this.ctx) return;
+      this.master.gain.setTargetAtTime(v ? 0.05 : 0.001, this.ctx.currentTime, 0.5);
+    }
+  }
+
+  // --- Interaction & Events ---
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2(-10, -10);
+  const clock = new THREE.Clock();
+  const defaultCamera = { position: new THREE.Vector3(0, 3.8, 16), target: new THREE.Vector3(0, 2.4, 0) };
+  const cameraGoal = { position: defaultCamera.position.clone(), target: defaultCamera.target.clone() };
+
+  function setChapter(id) {
+    if (chapterState.current === id) return;
+    const chapter = chapters.find((item) => item.id === id);
+    if (!chapter) return;
+    chapterState.current = id;
+    chapterTitle.textContent = chapter.title;
+    chapterHint.textContent = chapter.hint;
+  }
+
+  function createMemoryRing(node) {
+    const discoveryCount = discoveredHotspots.size;
+    const y = THREE.MathUtils.lerp(-1.1, 3.0, (discoveryCount - 1) / Math.max(TOTAL_HOTSPOTS - 1, 1));
+    const isRoot = Boolean(node.userData.isRoot);
+    const material = new THREE.MeshBasicMaterial({
+      color: isRoot ? 0x5fb7ff : 0xd7fff1,
+      transparent: true,
+      opacity: isRoot ? 0.22 : 0.18,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const geometry = new THREE.RingGeometry(0.78, 0.84, 32);
+    const ring = new THREE.Mesh(geometry, material);
+    ring.position.set(0, y, 0);
+    ring.rotation.x = Math.PI / 2;
+    ring.scale.setScalar(0.04);
+    ring.userData = {
+      targetScale: 1.0 + discoveryCount * 0.16,
+      birth: clock.getElapsedTime(),
+      isRoot
+    };
+    ringGroup.add(ring);
+    memoryRings.push(ring);
+  }
+
+  function updateJournalProgress() {
+    journalProgress.textContent = `Remembered ${discoveredHotspots.size} / ${TOTAL_HOTSPOTS}`;
+    memoryJournal.classList.toggle("has-discoveries", discoveredHotspots.size > 0);
+  }
+
+  function recordDiscovery(node) {
+    const title = node.userData.title;
+    if (discoveredHotspots.has(title)) return false;
+    discoveredHotspots.add(title);
+    updateJournalProgress();
+
+    const entry = document.createElement("li");
+    entry.className = "journal-entry";
+    const layer = node.userData.layer || (node.userData.isRoot ? "Root" : "Canopy");
+    entry.innerHTML = `<strong>${title}</strong><span>${layer}</span><p>${node.userData.journal || node.userData.text}</p>`;
+    journalList.appendChild(entry);
+    createMemoryRing(node);
+
+    if (discoveredHotspots.size === 1) setChapter("trunk");
+    if (discoveredHotspots.size === 3) setChapter("canopy");
+    if (discoveredHotspots.size >= TOTAL_HOTSPOTS) triggerCompletion();
+    return true;
+  }
+
+  function triggerCompletion() {
+    if (completionTriggered) return;
+    completionTriggered = true;
+    completionStartTime = clock.getElapsedTime();
+    setChapter("winter");
+    memoryRings.forEach((ring) => {
+      ring.material.opacity = Math.min(ring.material.opacity + 0.16, 0.58);
+    });
+    symbioticLines.children.forEach((line) => {
+      line.material.opacity = Math.max(line.material.opacity, 0.62);
+    });
+    cardTitle.textContent = "A withered tree meets spring";
+    cardText.textContent = "秋天，在为盛春铺垫。";
+    infoCard.classList.add("visible");
+  }
+
+  function setView(view) {
+    const views = {
+      roots: { position: new THREE.Vector3(0, -4.6, 13.5), target: new THREE.Vector3(0, -5.2, 0) },
+      trunk: { position: new THREE.Vector3(4.8, 0.4, 12.2), target: new THREE.Vector3(0, -0.5, 0) },
+      canopy: { position: new THREE.Vector3(1.8, 4.4, 13.0), target: new THREE.Vector3(0, 3.1, 0) },
+      whole: { position: defaultCamera.position.clone(), target: defaultCamera.target.clone() }
+    };
+    const next = views[view];
+    if (!next) return;
+    isAutoPanning = true;
+    cameraGoal.position.copy(next.position);
+    cameraGoal.target.copy(next.target);
+  }
+
+  function findHotspot() {
+    raycaster.setFromCamera(pointer, camera);
+    const intersections = raycaster.intersectObjects(hotspotObjects, true);
+    if (intersections.length) return intersections[0].object.parent || intersections[0].object;
+    return null;
+  }
+
+  function startGrowthJourney() {
+    hero.classList.add("hidden");
+    journeyStarted = true;
+    growthStartTime = clock.getElapsedTime();
+    growthProgress = 0;
+    growthChapterAnnounced = false;
+    setChapter("seed");
+    // 相机先看树根，然后抬升
+    camera.position.set(0, -2, 12);
+    controls.target.set(0, -3, 0);
+    cameraGoal.position.copy(defaultCamera.position);
+    cameraGoal.target.copy(defaultCamera.target);
+    
+    if(!audioScape) {
+      audioScape = new AudioScape();
+      if(audioScape.ctx && audioScape.ctx.state === 'suspended') audioScape.ctx.resume();
+      audioScape.setSeason(parseFloat(epochSlider.value));
+    }
+  }
+
+  function chooseHotspot(object) {
+    // 确保拿到的是 Group 节点
+    let node = object;
+    while(node && !node.userData.title && node.parent) node = node.parent;
+    if(!node || !node.userData.title) return;
+
+    if (node.userData.title === "Review" && audioScape) {
+      audioScape.playWoodResonance();
+    }
+
+    recordDiscovery(node);
+    const symbioticStory = maybeCreateSymbioticThread(previousHotspot, node);
+    previousHotspot = node;
+
+    const worldPosition = new THREE.Vector3();
+    node.getWorldPosition(worldPosition);
+
+    const cameraDirection = worldPosition.clone().normalize().multiplyScalar(3.25);
+    const sideOffset = new THREE.Vector3(0.8, 0.55, 0.8);
+    cameraGoal.position.copy(worldPosition).add(cameraDirection).add(sideOffset);
+    cameraGoal.target.copy(worldPosition);
+
+    if (completionTriggered) {
+      cardTitle.textContent = "A withered tree meets spring";
+      cardText.textContent = "秋天，在为盛春铺垫。";
+    } else {
+      cardTitle.textContent = symbioticStory ? "A withered tree meets spring" : node.userData.title;
+      cardText.textContent = symbioticStory || node.userData.text;
+    }
+    infoCard.classList.add("visible");
+  }
+
+  function resetCamera() {
+    cameraGoal.position.copy(defaultCamera.position);
+    cameraGoal.target.copy(defaultCamera.target);
+    infoCard.classList.remove("visible");
+  }
+
+  window.addEventListener("pointermove", (e) => {
+    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+  });
+  window.addEventListener("click", () => {
+    if (hovered && journeyStarted && growthProgress >= 1) chooseHotspot(hovered);
+  });
+  epochControl.addEventListener("pointerdown", e => e.stopPropagation());
+  epochControl.addEventListener("click", e => e.stopPropagation());
+  epochSlider.addEventListener("input", () => {
+    if(audioScape) audioScape.setSeason(parseFloat(epochSlider.value));
+  });
+  startButton.addEventListener("click", startGrowthJourney);
+  closeCard.addEventListener("click", resetCamera);
+  renderer.domElement.addEventListener("pointerdown", () => {
+    isAutoPanning = false;
+    cameraGoal.position.copy(camera.position);
+    cameraGoal.target.copy(controls.target);
+  });
+  viewNav.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+  viewNav.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const button = event.target.closest("button[data-view]");
+    if (button) setView(button.dataset.view);
+  });
+  
+  document.addEventListener("visibilitychange", () => {
+    if (audioScape) audioScape.setPageVisible(!document.hidden);
+  });
+
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    quality = createQualitySettings();
+    renderer.setPixelRatio(quality.pixelRatio);
+  });
+
+  if (epochSlider) {
+    epochSlider.value = DEFAULT_EPOCH_VALUE;
+    epochSlider.dispatchEvent(new Event("input", { bubbles: true }));
+    epochSlider.dispatchEvent(new Event("change", { bubbles: true }));
+    seasonParticleBackground.setSeason(DEFAULT_SEASON, true);
+    seasonParticleBackground.updateButtons();
+  }
+
+  // --- Physics & Helpers ---
+  function isOuterCanopyParticle(x, y, z, region) {
+    const radial = Math.hypot(x, z);
+    return region === REGION_CANOPY && y > 1.0 && radial > 1.2;
+  }
+
+  function windField(x, y, z, time, season, target = tempWind) {
+    if (season < CONFIG.wind.autumnStart) return target.set(0, 0, 0);
+    const swirl = Math.sin(z * CONFIG.wind.swirlFrequency + time * CONFIG.wind.swirlTimeScale) * CONFIG.wind.swirlStrength;
+    const cross = Math.cos(x * CONFIG.wind.crossFrequency + time * CONFIG.wind.crossTimeScale) * CONFIG.wind.crossStrength;
+    const vertical = season >= CONFIG.wind.winterThreshold ? 0 : Math.sin((x + z) * CONFIG.wind.verticalFrequency + time) * CONFIG.wind.verticalStrength;
+    return target.set(swirl, vertical, cross);
+  }
+
+  function updateStarDome(elapsed) {
+    starDome.points.rotation.y += 0.00008;
+    starDome.points.material.opacity = 0.48 + Math.sin(elapsed * 0.18) * 0.08;
+    const colors = starDome.points.geometry.attributes.color.array;
+    for (let i = 0; i < starDome.seeds.length; i += 1) {
+      if (i % 5 !== 0) continue;
+      const pulse = 0.82 + Math.sin(elapsed * 0.8 + starDome.seeds[i]) * 0.18;
+      const index = i * 3;
+      colors[index] = Math.min(colors[index] * 0.996 + 0.52 * pulse * 0.004, 1);
+      colors[index + 1] = Math.min(colors[index + 1] * 0.996 + 0.72 * pulse * 0.004, 1);
+      colors[index + 2] = Math.min(colors[index + 2] * 0.996 + 0.95 * pulse * 0.004, 1);
+    }
+    starDome.points.geometry.attributes.color.needsUpdate = true;
+  }
+
+  function updateReflectionSurface(elapsed, season) {
+    reflectionSurface.plane.material.opacity = 0.12 + Math.sin(elapsed * 0.55) * 0.025 + Math.max(0, 1 - Math.abs(season - 1)) * 0.035;
+    reflectionSurface.grid.material.opacity = 0.08 + Math.sin(elapsed * 0.38) * 0.018;
+    reflectionSurface.grid.rotation.y += 0.00035;
+  }
+
+  function updateAmbientDust(elapsed) {
+    const positions = ambientDust.points.geometry.attributes.position.array;
+    const velocities = ambientDust.velocities;
+    for (let i = 0; i < positions.length; i += 3) {
+      const index = i / 3;
+      positions[i] += velocities[i] + Math.sin(elapsed * 0.27 + ambientDust.seeds[index]) * 0.0012;
+      positions[i + 1] += velocities[i + 1] + Math.cos(elapsed * 0.21 + ambientDust.seeds[index]) * 0.0009;
+      positions[i + 2] += velocities[i + 2] + Math.sin(elapsed * 0.19 + ambientDust.seeds[index] * 1.7) * 0.0012;
+
+      if (positions[i] > CONFIG.particles.dustBoundsX) positions[i] = -CONFIG.particles.dustBoundsX;
+      if (positions[i] < -CONFIG.particles.dustBoundsX) positions[i] = CONFIG.particles.dustBoundsX;
+      if (positions[i + 1] > CONFIG.particles.dustTop) positions[i + 1] = CONFIG.particles.dustBottom;
+      if (positions[i + 1] < CONFIG.particles.dustBottom) positions[i + 1] = CONFIG.particles.dustTop;
+      if (positions[i + 2] > CONFIG.particles.dustBoundsX) positions[i + 2] = -CONFIG.particles.dustBoundsX;
+      if (positions[i + 2] < -CONFIG.particles.dustBoundsX) positions[i + 2] = CONFIG.particles.dustBoundsX;
+    }
+    ambientDust.points.material.opacity = 0.11 + Math.sin(elapsed * 0.31) * 0.025;
+    ambientDust.points.geometry.attributes.position.needsUpdate = true;
+  }
+
+  function updateFallingParticles(elapsed, season) {
+    const positions = fallingParticles.points.geometry.attributes.position.array;
+    const velocities = fallingParticles.velocities;
+    const colors = fallingParticles.points.geometry.attributes.color.array;
+    const autumnWinter = season >= 1.7;
+    fallingParticles.points.material.opacity = THREE.MathUtils.lerp(
+      fallingParticles.points.material.opacity,
+      autumnWinter ? 0.62 : 0.42,
+      0.035
+    );
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const particleIndex = i / 3;
+      const wind = windField(positions[i], positions[i + 1], positions[i + 2], elapsed + fallingParticles.seeds[particleIndex], season);
+      if (autumnWinter) {
+        positions[i] += velocities[i] + wind.x * CONFIG.particles.fallingWindScale + Math.sin(elapsed * 0.7 + particleIndex) * 0.002;
+        positions[i + 1] += velocities[i + 1] - CONFIG.particles.fallingDownDrift + wind.y;
+        positions[i + 2] += velocities[i + 2] + wind.z * CONFIG.particles.fallingWindScale;
+        if (positions[i + 1] < CONFIG.particles.fallingBottom || Math.abs(positions[i]) > CONFIG.particles.fallingBounds || Math.abs(positions[i + 2]) > CONFIG.particles.fallingBounds) {
+          resetFallingParticle(positions, velocities, colors, fallingParticles.seeds, particleIndex, season);
+        }
+      } else {
+        positions[i] += velocities[i] * 0.5 + Math.sin(elapsed * 0.62 + particleIndex) * 0.002;
+        positions[i + 1] += Math.abs(velocities[i + 1]) + CONFIG.particles.fallingUpDrift;
+        positions[i + 2] += velocities[i + 2] * 0.5 + Math.cos(elapsed * 0.52 + particleIndex) * 0.002;
+        if (positions[i + 1] > CONFIG.particles.fallingTop || Math.abs(positions[i]) > CONFIG.particles.fallingBounds || Math.abs(positions[i + 2]) > CONFIG.particles.fallingBounds) {
+          resetFallingParticle(positions, velocities, colors, fallingParticles.seeds, particleIndex, season);
+        }
+      }
+    }
+    fallingParticles.points.geometry.attributes.position.needsUpdate = true;
+    fallingParticles.points.geometry.attributes.color.needsUpdate = true;
+  }
+
+  function updateRootEnergyFlow(elapsed) {
+    const positions = rootEnergyFlow.points.geometry.attributes.position.array;
+    for (let i = 0; i < rootEnergyFlow.curves.length; i += 1) {
+      rootEnergyFlow.seeds[i] = (rootEnergyFlow.seeds[i] + rootEnergyFlow.speeds[i] * CONFIG.particles.rootFlowStep) % 1;
+      const point = rootEnergyFlow.curves[i].getPoint(rootEnergyFlow.seeds[i], tempCurvePoint);
+      const index = i * 3;
+      positions[index] = point.x + Math.sin(elapsed * 4 + i) * CONFIG.particles.rootFlowWobble;
+      positions[index + 1] = point.y;
+      positions[index + 2] = point.z + Math.cos(elapsed * 4 + i) * CONFIG.particles.rootFlowWobble;
+    }
+    rootEnergyFlow.points.material.opacity = 0.58 + Math.sin(elapsed * 1.8) * 0.18;
+    rootEnergyFlow.points.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // 避免在循环中创建对象
+  const seasonColors = CONFIG.colors.seasons.map((hex) => new THREE.Color(hex));
+  const rootColorBase = new THREE.Color(CONFIG.colors.rootBase);
+  const rootColorGlow = new THREE.Color(CONFIG.colors.rootGlow);
+  const currentParticleColor = new THREE.Color();
+  const tempRootColor = new THREE.Color();
+  const tempPos = new THREE.Vector3();
+  const tempInit = new THREE.Vector3();
+  const tempWind = new THREE.Vector3();
+  const tempMouseVec = new THREE.Vector3();
+  const tempActiveSwarmCenter = new THREE.Vector3();
+  const tempHotspotScale = new THREE.Vector3(1, 1, 1);
+  const tempCurvePoint = new THREE.Vector3();
+
+  class TreeBuilder {
+    constructor(data) {
+      this.points = data.points;
+      this.lineVertices = data.lineVertices;
+      this.branchTips = data.branchTips;
+      this.rootTips = data.rootTips;
+      this.regionFlags = data.regionFlags;
+      this.growthFactors = data.growthFactors;
+    }
+  }
+
+  const treeBuilder = new TreeBuilder({
+    points,
+    lineVertices,
+    branchTips,
+    rootTips,
+    regionFlags,
+    growthFactors
+  });
+
+  class ParticleManager {
+    update(elapsed, season) {
+      updateStarDome(elapsed);
+      updateReflectionSurface(elapsed, season);
+      updateAmbientDust(elapsed);
+      updateFallingParticles(elapsed, season);
+      updateRootEnergyFlow(elapsed);
+      this.updateSwarm(elapsed, season);
+    }
+
+    updateSwarm(elapsed, season) {
+      if (!journeyStarted || growthProgress < 1) return;
+
+      const sPos = swarm.geometry.attributes.position.array;
+      const tOpacity = season < 1.5 ? 1.0 : (season < 2.0 ? 0.4 : 0.0);
+      const ritualAge = completionTriggered ? elapsed - completionStartTime : 999;
+      const gatherStrength = ritualAge < 2.1 ? 1 - ritualAge / 2.1 : 0;
+      const ritualOpacity = ritualAge < 4.2 ? 0.65 * Math.max(0, 1 - Math.abs(ritualAge - 2.1) / 2.1) : 0;
+      const activeSwarmCenter = tempActiveSwarmCenter.copy(swarmCenter).lerp(completionSwarmCenter, Math.max(0, gatherStrength));
+      swarm.material.opacity = THREE.MathUtils.lerp(swarm.material.opacity, Math.max(tOpacity, ritualOpacity), 0.05);
+      const mouseVec = tempMouseVec.set(pointer.x * 5, pointer.y * 5 + 3, 0).unproject(camera);
+
+      for(let i=0; i<SWARM_COUNT; i++) {
+        tempPos.set(sPos[i*3], sPos[i*3+1], sPos[i*3+2]);
+        const vel = swarmVel[i];
+        const attract = completionTriggered && ritualAge < 2.1 ? CONFIG.swarm.ritualAttract : CONFIG.swarm.baseAttract;
+        vel.x += (activeSwarmCenter.x - tempPos.x) * attract;
+        vel.y += (activeSwarmCenter.y - tempPos.y) * attract;
+        vel.z += (activeSwarmCenter.z - tempPos.z) * attract;
+
+        const distToMouse = tempPos.distanceTo(mouseVec);
+        if(distToMouse < CONFIG.swarm.mouseRepelDistance) {
+          vel.x += (tempPos.x - mouseVec.x) * CONFIG.swarm.mouseRepelStrength;
+          vel.y += (tempPos.y - mouseVec.y) * CONFIG.swarm.mouseRepelStrength;
+        }
+
+        vel.clampLength(-CONFIG.swarm.velocityLimit, CONFIG.swarm.velocityLimit);
+        tempPos.add(vel);
+        sPos[i*3] = tempPos.x; sPos[i*3+1] = tempPos.y; sPos[i*3+2] = tempPos.z;
+      }
+      swarm.geometry.attributes.position.needsUpdate = true;
+    }
+  }
+
+  class InteractionController {
+    update(elapsed) {
+      this.updateHoverAndHotspots(elapsed);
+      this.updateMemoryRings(elapsed);
+      this.updateSymbioticLines(elapsed);
+    }
+
+    updateHoverAndHotspots(elapsed) {
+      const hit = findHotspot();
+      if (journeyStarted && growthProgress >= 1) {
+        if (hit !== hovered) {
+          if (hovered && hovered.children[0]) {
+            hovered.children[0].scale.setScalar(1); hovered.children[1].scale.setScalar(1);
+          }
+          hovered = hit;
+          if (hovered && hovered.children[0]) {
+            hovered.children[0].scale.setScalar(1.28); hovered.children[1].scale.setScalar(1.2);
+          }
+        }
+        document.body.style.cursor = hovered ? "pointer" : "default";
+
+        hotspotObjects.forEach((h, index) => {
+          h.scale.lerp(tempHotspotScale, CONFIG.animation.hotspotRevealLerp);
+          if(h.children[1]) {
+            const pulse = 1 + Math.sin(elapsed * 2.4 + index * 0.9) * 0.08;
+            h.children[1].scale.setScalar((hovered === h ? 1.2 : 1) * pulse);
+          }
+        });
+      }
+    }
+
+    updateMemoryRings(elapsed) {
+      memoryRings.forEach((ring, index) => {
+        const target = ring.userData.targetScale + Math.sin(elapsed * 1.2 + index) * 0.035;
+        ring.scale.setScalar(THREE.MathUtils.lerp(ring.scale.x, target, CONFIG.animation.ringScaleLerp));
+        const baseOpacity = completionTriggered ? 0.42 : (ring.userData.isRoot ? 0.22 : 0.18);
+        ring.material.opacity = THREE.MathUtils.lerp(
+          ring.material.opacity,
+          baseOpacity + Math.sin(elapsed * 1.4 + index * 0.7) * 0.035,
+          0.035
+        );
+      });
+    }
+
+    updateSymbioticLines(elapsed) {
+      symbioticLines.children.forEach((line, index) => {
+        const targetOpacity = completionTriggered ? 0.66 : 0.4;
+        line.material.opacity = THREE.MathUtils.lerp(
+          line.material.opacity,
+          targetOpacity + Math.sin(elapsed * 1.1 + index) * 0.05,
+          0.03
+        );
+      });
+    }
+  }
+
+  class TreeParticleAnimator {
+    update(elapsed, season, seasonIndex, nextSeasonIndex, colorLerp) {
+      const positions = particleCloud.geometry.attributes.position.array;
+      const initials = particleCloud.geometry.attributes.initialPosition.array;
+      const vels = particleCloud.geometry.attributes.velocity.array;
+      const particleColors = particleCloud.geometry.attributes.color.array;
+      const regions = particleCloud.geometry.attributes.region.array;
+      const factors = particleCloud.geometry.attributes.growth.array;
+
+      this.updateGrowthAndRotation(elapsed, season);
+      currentParticleColor.copy(seasonColors[seasonIndex]).lerp(seasonColors[nextSeasonIndex], colorLerp);
+      this.updateParticles(elapsed, season, positions, initials, vels, particleColors, regions, factors);
+
+      particleCloud.geometry.attributes.position.needsUpdate = true;
+      particleCloud.geometry.attributes.color.needsUpdate = true;
+      lineMaterial.color.copy(currentParticleColor);
+    }
+
+    updateGrowthAndRotation(elapsed, season) {
+      if (journeyStarted && growthProgress < 1) {
+        growthProgress = THREE.MathUtils.clamp((elapsed - growthStartTime) / 6.0, 0, 1);
+        const totalVertices = lineGeometry.attributes.position.count;
+        lineGeometry.setDrawRange(0, Math.floor(totalVertices * growthProgress));
+        if (growthProgress >= 1 && !growthChapterAnnounced) {
+          growthChapterAnnounced = true;
+          setChapter("roots");
+        }
+        tree.rotation.y += CONFIG.animation.growthRotation;
+      } else if (growthProgress >= 1) {
+        let rotSpeed = CONFIG.animation.treeRotation;
+        if (season > CONFIG.wind.winterThreshold) rotSpeed *= 0.3;
+        else if (season >= CONFIG.wind.autumnStart) rotSpeed *= 0.75;
+        tree.rotation.y += rotSpeed;
+      }
+    }
+
+    updateParticles(elapsed, season, positions, initials, vels, particleColors, regions, factors) {
+      for (let i = 0; i < positions.length; i += 3) {
+        const idx = i / 3;
+        const reg = regions[idx];
+        const gFactor = factors[idx];
+        tempPos.set(positions[i], positions[i+1], positions[i+2]);
+        tempInit.set(initials[i], initials[i+1], initials[i+2]);
+
+        if (reg === REGION_ROOT) {
+          const pulse = Math.sin(elapsed * 2 + tempInit.y) * 0.2 + 0.8;
+          const mixRatio = Math.abs(Math.sin(tempInit.x * 2));
+          tempRootColor.copy(rootColorBase).lerp(rootColorGlow, mixRatio * pulse);
+          particleColors[i] = tempRootColor.r; particleColors[i+1] = tempRootColor.g; particleColors[i+2] = tempRootColor.b;
+        } else {
+          particleColors[i] = currentParticleColor.r; 
+          particleColors[i+1] = currentParticleColor.g; 
+          particleColors[i+2] = currentParticleColor.b;
+        }
+
+        if (journeyStarted && growthProgress < 1) {
+          if (growthProgress >= gFactor) {
+            tempPos.lerp(tempInit, 0.08);
+          } else {
+            tempPos.copy(SEED_POINT);
+            particleColors[i] *= 0.05; particleColors[i+1] *= 0.05; particleColors[i+2] *= 0.05;
+          }
+        } else if (journeyStarted && growthProgress >= 1) {
+          if (season >= CONFIG.wind.autumnStart && isOuterCanopyParticle(tempInit.x, tempInit.y, tempInit.z, reg)) {
+            const w = windField(tempPos.x, tempPos.y, tempPos.z, elapsed, season);
+            tempPos.x += vels[i] + w.x;
+            tempPos.y += vels[i+1] + w.y - (season < CONFIG.wind.winterThreshold ? 0.005 : 0);
+            tempPos.z += vels[i+2] + w.z;
+
+            if (tempPos.y < -6) {
+               tempPos.copy(tempInit);
+               tempPos.y = tempInit.y + 1;
+            }
+          } else {
+            tempPos.x += (tempInit.x - tempPos.x) * 0.08;
+            tempPos.y += (tempInit.y - tempPos.y) * 0.08;
+            tempPos.z += (tempInit.z - tempPos.z) * 0.08;
+            
+            if (season < 1.0 && reg === REGION_CANOPY && i % 4 === 0) {
+              tempPos.y += Math.sin(elapsed * 1.5 + tempInit.x) * 0.0015;
+            }
+          }
+        }
+
+        positions[i] = tempPos.x; positions[i+1] = tempPos.y; positions[i+2] = tempPos.z;
+      }
+    }
+  }
+
+  const particleManager = new ParticleManager();
+  const interactionController = new InteractionController();
+  const treeParticleAnimator = new TreeParticleAnimator();
+
+  // --- Main Animation Loop ---
+  function animate() {
+    const elapsed = clock.getElapsedTime();
+    const season = parseFloat(epochSlider.value);
+    const sIndex = Math.min(Math.floor(season), seasonColors.length - 1);
+    const nextSIndex = Math.min(sIndex + 1, seasonColors.length - 1);
+    const colorLerp = season - sIndex;
+
+    particleManager.update(elapsed, season);
+
+    treeParticleAnimator.update(elapsed, season, sIndex, nextSIndex, colorLerp);
+
+    interactionController.update(elapsed);
+
+    // 5. Camera & Controls
+    camera.position.lerp(cameraGoal.position, 0.04);
+    controls.target.lerp(cameraGoal.target, 0.04);
+    if (isAutoPanning && camera.position.distanceTo(cameraGoal.position) < 0.08 && controls.target.distanceTo(cameraGoal.target) < 0.08) {
+      isAutoPanning = false;
+    }
+    controls.target.y = THREE.MathUtils.clamp(controls.target.y, -5.5, 5.8);
+    controls.update();
+
+    renderer.render(scene, camera);
+  }
+
+  renderer.setAnimationLoop(animate);
+</script>
+</body>
+</html>
