@@ -48,6 +48,7 @@
       display: block;
       background: #000;
       z-index: 0;
+      touch-action: none;
     }
 
     #seasonCanvas {
@@ -2484,7 +2485,8 @@
 
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.13, 24, 16), glowMaterial.clone());
     const halo = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 16), haloMaterial.clone());
-    const picker = new THREE.Mesh(new THREE.SphereGeometry(0.7, 24, 16), pickMaterial);
+    const pickerRadius = window.innerWidth < 760 ? 1.2 : 0.7;
+    const picker = new THREE.Mesh(new THREE.SphereGeometry(pickerRadius, 24, 16), pickMaterial);
     
     // 如果是地下，光晕偏蓝紫
     if(data.isRoot) halo.material.color.setHex(CONFIG.colors.rootHalo);
@@ -2821,25 +2823,60 @@
     infoCard.classList.remove("visible");
   }
 
-  window.addEventListener("pointermove", (e) => {
-    pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-    pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-  });
-  window.addEventListener("click", () => {
-    if (hovered && journeyStarted && growthProgress >= 1) chooseHotspot(hovered);
-  });
+  function updatePointerFromEvent(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  let tapStartX = 0;
+  let tapStartY = 0;
+  let tapStartTime = 0;
+
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    updatePointerFromEvent(e);
+  }, { passive: true });
+
+  renderer.domElement.addEventListener("pointerdown", (e) => {
+    updatePointerFromEvent(e);
+
+    tapStartX = e.clientX;
+    tapStartY = e.clientY;
+    tapStartTime = performance.now();
+
+    isAutoPanning = false;
+    cameraGoal.position.copy(camera.position);
+    cameraGoal.target.copy(controls.target);
+  }, { passive: true });
+
+  renderer.domElement.addEventListener("pointerup", (e) => {
+    updatePointerFromEvent(e);
+
+    const moveDistance = Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY);
+    const tapDuration = performance.now() - tapStartTime;
+
+    if (moveDistance > 12 || tapDuration > 650) return;
+    if (!journeyStarted || growthProgress < 1) return;
+
+    const hit = findHotspot();
+    if (hit) {
+      e.preventDefault();
+      e.stopPropagation();
+      chooseHotspot(hit);
+    }
+  }, { passive: false });
+
   epochControl.addEventListener("pointerdown", e => e.stopPropagation());
   epochControl.addEventListener("click", e => e.stopPropagation());
+  seasonSwitcher.addEventListener("pointerdown", e => e.stopPropagation());
+  seasonSwitcher.addEventListener("click", e => e.stopPropagation());
+  infoCard.addEventListener("pointerdown", e => e.stopPropagation());
+  infoCard.addEventListener("click", e => e.stopPropagation());
   epochSlider.addEventListener("input", () => {
     if(audioScape) audioScape.setSeason(parseFloat(epochSlider.value));
   });
   startButton.addEventListener("click", startGrowthJourney);
   closeCard.addEventListener("click", resetCamera);
-  renderer.domElement.addEventListener("pointerdown", () => {
-    isAutoPanning = false;
-    cameraGoal.position.copy(camera.position);
-    cameraGoal.target.copy(controls.target);
-  });
   viewNav.addEventListener("pointerdown", (event) => {
     event.stopPropagation();
   });
