@@ -72,6 +72,24 @@
       z-index: 1;
     }
 
+    .frost-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2s ease;
+      background:
+        radial-gradient(ellipse at center, transparent 42%, rgba(180, 220, 255, 0.08) 72%, rgba(210, 238, 255, 0.22) 100%),
+        linear-gradient(90deg, rgba(210, 238, 255, 0.14), transparent 16%, transparent 84%, rgba(210, 238, 255, 0.14));
+      box-shadow: inset 0 0 150px rgba(180, 220, 255, 0.4);
+      mix-blend-mode: screen;
+    }
+
+    .frost-overlay.visible {
+      opacity: 1;
+    }
+
     .season-switcher {
       position: fixed;
       left: 24px;
@@ -615,6 +633,7 @@
   <canvas id="scene"></canvas>
   <div class="shade"></div>
   <canvas id="seasonCanvas" aria-hidden="true"></canvas>
+  <div class="frost-overlay" id="frostOverlay" aria-hidden="true"></div>
 
   <nav class="left-nav" aria-label="Exhibition sections">
     <a href="#birds">Before</a>
@@ -678,10 +697,14 @@
   <script type="module">
   import * as THREE from "three";
   import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+  import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+  import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+  import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
   // --- DOM Elements ---
   const canvas = document.getElementById("scene");
   const seasonCanvas = document.getElementById("seasonCanvas");
+  const frostOverlay = document.getElementById("frostOverlay");
   const seasonSwitcher = document.getElementById("seasonSwitcher");
   const hero = document.getElementById("hero");
   const startButton = document.getElementById("startButton");
@@ -1188,9 +1211,16 @@
       } else if (this.seasonName === "autumn") {
         const tumble = Math.sin(this.flipPhase * 1.6 + this.noiseSeed) * config.turbulence;
         const gustCurl = gust * Math.sin(time * 2.2 + this.noiseSeed) * (0.55 + this.depth);
-        this.vx = this.vx * config.gustDrag + gustCurl * 0.035;
-        this.x += (this.vx + windX + sway * 0.82 + tumble) * dt * 60;
-        this.y += (this.vy + config.gravity * 38 * this.depth + config.wind.y + Math.abs(tumble) * 0.08) * dt * 60;
+        const flowScale = 0.0035 + this.depth * 0.0025;
+        const flowA = Math.sin(this.x * flowScale + time * 0.92 + Math.cos(this.y * flowScale * 1.7 - time * 0.34));
+        const flowB = Math.cos(this.y * flowScale * 1.35 - time * 0.76 + Math.sin(this.x * flowScale * 1.15 + time * 0.48));
+        const curl = Math.sin((this.x - this.y) * flowScale * 0.8 + time * 1.15 + this.noiseSeed);
+        const vortexX = (flowA + curl * 0.72) * config.turbulence * (0.55 + this.depth);
+        const vortexY = (flowB * 0.24 - Math.abs(curl) * 0.08) * config.turbulence * (0.35 + this.depth);
+        this.vx = this.vx * config.gustDrag + gustCurl * 0.035 + vortexX * 0.018;
+        this.vy = this.vy * 0.992 + vortexY * 0.012;
+        this.x += (this.vx + windX + sway * 0.82 + tumble + vortexX) * dt * 60;
+        this.y += (this.vy + config.gravity * 38 * this.depth + config.wind.y + Math.abs(tumble) * 0.08 + vortexY) * dt * 60;
         this.rotation += Math.sin(time * 1.5 + this.noiseSeed) * 0.035 * dt * 60;
       } else if (this.seasonName === "winter") {
         const steadyWind = config.wind.x * (0.45 + this.depth * 0.75);
@@ -1841,12 +1871,20 @@
     return "winter";
   }
 
+  function updateFrostOverlay(seasonName) {
+    if (!frostOverlay) return;
+    frostOverlay.classList.toggle("visible", seasonName === "winter");
+  }
+
   const seasonParticleBackground = new SeasonParticleBackground(seasonCanvas, seasonSwitcher);
   seasonParticleBackground.setSeason(DEFAULT_SEASON, true);
   seasonParticleBackground.updateButtons();
+  updateFrostOverlay(DEFAULT_SEASON);
   seasonParticleBackground.start();
   epochSlider.addEventListener("input", () => {
-    seasonParticleBackground.setSeason(seasonNameFromEpoch(epochSlider.value));
+    const seasonName = seasonNameFromEpoch(epochSlider.value);
+    seasonParticleBackground.setSeason(seasonName);
+    updateFrostOverlay(seasonName);
   });
 
   // --- Constants & Globals ---
@@ -1917,7 +1955,11 @@
       ritualAttract: 0.0018,
       mouseRepelDistance: 4,
       mouseRepelStrength: 0.001,
-      velocityLimit: 0.04
+      velocityLimit: 0.04,
+      separationDistance: 0.68,
+      separationStrength: 0.00072,
+      alignmentStrength: 0.018,
+      alignmentSamples: 4
     },
     animation: {
       growthRotation: 0.002,
@@ -1978,6 +2020,14 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   // 移动端及性能底线：最大 1.75
   renderer.setPixelRatio(quality.pixelRatio);
+
+  const composer = new EffectComposer(renderer);
+  composer.setPixelRatio(quality.pixelRatio);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.1);
+  composer.addPass(bloomPass);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -2893,9 +2943,11 @@
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
     quality = createQualitySettings();
     renderer.setPixelRatio(quality.pixelRatio);
+    composer.setPixelRatio(quality.pixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
   });
 
   if (epochSlider) {
@@ -3015,6 +3067,8 @@
   const rootColorGlow = new THREE.Color(CONFIG.colors.rootGlow);
   const currentParticleColor = new THREE.Color();
   const tempRootColor = new THREE.Color();
+  const springBudColor = new THREE.Color(0x7aff9e);
+  const tempBudColor = new THREE.Color();
   const tempPos = new THREE.Vector3();
   const tempInit = new THREE.Vector3();
   const tempWind = new THREE.Vector3();
@@ -3068,6 +3122,50 @@
       for(let i=0; i<SWARM_COUNT; i++) {
         tempPos.set(sPos[i*3], sPos[i*3+1], sPos[i*3+2]);
         const vel = swarmVel[i];
+        let sepX = 0;
+        let sepY = 0;
+        let sepZ = 0;
+        let alignX = 0;
+        let alignY = 0;
+        let alignZ = 0;
+        let sepCount = 0;
+        let alignCount = 0;
+        const sampleCount = Math.min(CONFIG.swarm.alignmentSamples, SWARM_COUNT - 1);
+        const sepDistanceSq = CONFIG.swarm.separationDistance * CONFIG.swarm.separationDistance;
+
+        for (let sample = 1; sample <= sampleCount; sample += 1) {
+          const neighborIndex = (i + sample * 17) % SWARM_COUNT;
+          if (neighborIndex === i) continue;
+          const n3 = neighborIndex * 3;
+          const dx = tempPos.x - sPos[n3];
+          const dy = tempPos.y - sPos[n3 + 1];
+          const dz = tempPos.z - sPos[n3 + 2];
+          const distSq = dx * dx + dy * dy + dz * dz;
+          if (distSq > 0.0001 && distSq < sepDistanceSq) {
+            sepX += dx / distSq;
+            sepY += dy / distSq;
+            sepZ += dz / distSq;
+            sepCount += 1;
+          }
+          const neighborVel = swarmVel[neighborIndex];
+          alignX += neighborVel.x;
+          alignY += neighborVel.y;
+          alignZ += neighborVel.z;
+          alignCount += 1;
+        }
+
+        if (sepCount > 0) {
+          vel.x += (sepX / sepCount) * CONFIG.swarm.separationStrength;
+          vel.y += (sepY / sepCount) * CONFIG.swarm.separationStrength;
+          vel.z += (sepZ / sepCount) * CONFIG.swarm.separationStrength;
+        }
+
+        if (alignCount > 0) {
+          vel.x += ((alignX / alignCount) - vel.x) * CONFIG.swarm.alignmentStrength;
+          vel.y += ((alignY / alignCount) - vel.y) * CONFIG.swarm.alignmentStrength;
+          vel.z += ((alignZ / alignCount) - vel.z) * CONFIG.swarm.alignmentStrength;
+        }
+
         const attract = completionTriggered && ritualAge < 2.1 ? CONFIG.swarm.ritualAttract : CONFIG.swarm.baseAttract;
         vel.x += (activeSwarmCenter.x - tempPos.x) * attract;
         vel.y += (activeSwarmCenter.y - tempPos.y) * attract;
@@ -3196,6 +3294,14 @@
           particleColors[i] = currentParticleColor.r; 
           particleColors[i+1] = currentParticleColor.g; 
           particleColors[i+2] = currentParticleColor.b;
+          if (season < 0.75 && reg === REGION_CANOPY && gFactor > 0.72) {
+            const budBreath = 0.72 + Math.sin(elapsed * 3.4 + tempInit.x * 2.1 + tempInit.z * 1.7) * 0.28;
+            const budMix = THREE.MathUtils.clamp(0.42 + budBreath * 0.38, 0, 0.82);
+            tempBudColor.copy(currentParticleColor).lerp(springBudColor, budMix);
+            particleColors[i] = Math.min(tempBudColor.r * (0.92 + budBreath * 0.18), 1);
+            particleColors[i+1] = Math.min(tempBudColor.g * (0.94 + budBreath * 0.22), 1);
+            particleColors[i+2] = Math.min(tempBudColor.b * (0.9 + budBreath * 0.12), 1);
+          }
         }
 
         if (journeyStarted && growthProgress < 1) {
@@ -3259,7 +3365,7 @@
     controls.target.y = THREE.MathUtils.clamp(controls.target.y, -5.5, 5.8);
     controls.update();
 
-    renderer.render(scene, camera);
+    composer.render();
   }
 
   renderer.setAnimationLoop(animate);
